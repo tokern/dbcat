@@ -1,11 +1,11 @@
-from dbcat.dbcat import fib
+import pytest
+
+from dbcat.catalog.scanners import FileScanner
+from dbcat.dbcat import render
 
 
-def test_fib() -> None:
-    assert fib(0) == 0
-    assert fib(1) == 1
-    assert fib(2) == 1
-    assert fib(3) == 2
-    assert fib(4) == 3
-    assert fib(5) == 5
-    assert fib(10) == 55
+@pytest.mark.skip(reason="no way of currently testing this")
+def test_render():
+    scanner = FileScanner("test", "test/catalog.json")
+    catalog = scanner.scan()
+    render([catalog])
