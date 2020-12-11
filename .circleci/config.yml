@@ -13,6 +13,7 @@ workflows:
             tags:
               only: /.*/
       - deploy:
+          context: PyPi
           requires:
             - build
           filters:

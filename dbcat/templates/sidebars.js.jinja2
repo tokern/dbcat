@@ -1,0 +1,23 @@
+// ** Sidebar managed by DbCat. DO NOT EDIT ** //
+module.exports = {
+  someSidebar: {
+    'Data Dictionary': [
+        'introduction',
+        {
+          {% for db in databases -%}
+            "{{ db.name }}": [
+              {% for schema in db.schemata -%}
+                {
+                  "{{ schema.name }}": [
+                    {% for table in schema.tables -%}
+                      "{{ db.name }}/{{ schema.name }}/{{ table.name }}",
+                    {% endfor %}
+                 ]
+                }
+             {% endfor %}
+           ]
+         {% endfor %}
+        }
+    ],
+  },
+};

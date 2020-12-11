@@ -1,0 +1,16 @@
+---
+id: {{ table.name }}
+title: {{ table.name }}
+---
+
+## {{ table.name }}
+
+This page contains information about {{ table.name }}
+
+## Columns
+
+| Name | Type |
+|------|------|
+{%  for column in table.columns -%}
+|{{ column.name }}|{{ column.type }}|
+{% endfor %}
