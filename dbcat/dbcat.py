@@ -29,7 +29,7 @@ def render(databases, path):
     logger = LogMixin()
 
     for db in databases:
-        db_template = env.get_template("database.mdx.jinja2")
+        db_template = env.get_template("catalog.mdx.jinja2")
         output = db_template.render(database=db)
         db_dir = docs_path / db.name
         logger.logger.debug("Creating directory for database: {}".format(db_dir))
