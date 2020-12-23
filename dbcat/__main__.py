@@ -49,15 +49,18 @@ config_template = """
 # BigQuery
 # Copy paste the section of the relevant database and fill in the values.
 
-databases:
+catalogs:
   - name: local
     type: file
     path: /dev/null
-# - name: bq_db
-#   type: bigquery
-#   key_path: ers/robert/gcp-credentials.json
-#   project_credentials:  # Only one of key_path or project_credentials needed
-#   project_id:
+  - name: local_dir
+    type: dir
+    path: /dev/null
+  - name: bq_db
+    type: bigquery
+    key_path: path/to/gcp-credentials.json
+    project_credentials:  # Only one of key_path or project_credentials needed
+    project_id:
 """
 
 
@@ -141,9 +144,9 @@ tables matching -T are excluded from what is otherwise a normal dump.
 
 @main.command("generate", help="Generate documents by scanning databases")
 @click.option(
-    "-d",
-    "--db-name",
-    help="Name of the database. If not specified, all databases are scanned",
+    "-c",
+    "--catalog-name",
+    help="Name of the catalog. If not specified, all databases are scanned",
 )
 @click.option("-n", "--include-schema", multiple=True, help=schema_help_text)
 @click.option("-N", "--exclude-schema", multiple=True, help=exclude_schema_help_text)
@@ -152,7 +155,13 @@ tables matching -T are excluded from what is otherwise a normal dump.
 @click.argument("path", type=click.Path(exists=True))
 @click.pass_obj
 def generate(
-    obj, db_name, include_schema, exclude_schema, include_table, exclude_table, path
+    obj,
+    catalog_name,
+    include_schema,
+    exclude_schema,
+    include_table,
+    exclude_table,
+    path,
 ):
     config_file = obj["working_dir"] / "config"
     logger = LogMixin()
@@ -165,7 +174,7 @@ def generate(
     catalogs = []
     for scanner in scanners:
         catalog = scanner.scan()
-        if db_name is None or catalog.name == db_name:
+        if catalog_name is None or catalog.name == catalog_name:
             catalogs.append(catalog)
 
     for catalog in catalogs:

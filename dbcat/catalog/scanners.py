@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from dbcat.catalog.metadata import Column, Database, Schema, Table
+from dbcat.catalog.metadata import Catalog, Column, Schema, Table
 
 
 class Scanner(ABC):
@@ -26,9 +26,9 @@ class Scanner(ABC):
 
 
 class FileScanner(Scanner):
-    class Database(Database):
+    class Catalog(Catalog):
         def __init__(self, name, schemata):
-            super(FileScanner.Database, self).__init__(name, None)
+            super(FileScanner.Catalog, self).__init__(name, None)
 
             for schema in schemata:
                 self._children.append(FileScanner.Schema(parent=self, **schema))
@@ -65,4 +65,4 @@ class FileScanner(Scanner):
         with open(self.path, "r") as file:
             content = json.load(file)
 
-        return FileScanner.Database(**content)
+        return FileScanner.Catalog(**content)
