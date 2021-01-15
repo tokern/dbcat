@@ -1,14 +1,14 @@
-from dbcat.catalog.metadata import Catalog as SuperCat
 from dbcat.catalog.metadata import Column as SuperCol
+from dbcat.catalog.metadata import Database as SuperCat
 from dbcat.catalog.metadata import Schema as SuperSch
 from dbcat.catalog.metadata import Table as SuperTab
 from dbcat.scanners import Scanner
 
 
 class File(Scanner):
-    class Catalog(SuperCat):
+    class Database(SuperCat):
         def __init__(self, name, schemata):
-            super(File.Catalog, self).__init__(name, None)
+            super(File.Database, self).__init__(name, None)
 
             for schema in schemata:
                 self._children.append(File.Schema(parent=self, **schema))
@@ -39,10 +39,10 @@ class File(Scanner):
     def path(self):
         return self._path
 
-    def scan(self) -> Catalog:
+    def scan(self) -> Database:
         import json
 
         with open(self.path, "r") as file:
             content = json.load(file)
 
-        return File.Catalog(**content)
+        return File.Database(**content)
