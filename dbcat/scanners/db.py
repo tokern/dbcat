@@ -137,7 +137,7 @@ class DbSchema(Scanner):
     ) -> Tuple[MysqlMetadataExtractor, Any]:
         connection.where_clause_suffix = """
         WHERE
-            schema NOT IN ('information_schema', 'performance_schema', 'sys', 'mysql')
+            c.table_schema NOT IN ('information_schema', 'performance_schema', 'sys', 'mysql')
         """
 
         extractor = MysqlMetadataExtractor()

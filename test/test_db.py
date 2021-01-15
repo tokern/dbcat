@@ -50,6 +50,7 @@ def mysql_conn():
             password="p11secret",
             database="piidb",
         ),
+        "piidb",
     )
 
 
@@ -66,18 +67,19 @@ def pg_conn():
             database="piidb",
             cluster="public",
         ),
+        "public",
     )
 
 
 @pytest.fixture(params=[mysql_conn(), pg_conn()])
 def load_data(request):
-    db_conn, extractor_conn = request.param
+    db_conn, extractor_conn, expected_schema = request.param
     with closing(db_conn) as conn:
         with conn.cursor() as cursor:
             for statement in pii_data_load:
                 cursor.execute(statement)
             cursor.execute("commit")
-        yield conn, extractor_conn
+        yield conn, extractor_conn, expected_schema
         with conn.cursor() as cursor:
             for statement in pii_data_drop:
                 cursor.execute(statement)
@@ -85,15 +87,14 @@ def load_data(request):
 
 
 def test_catalog(load_data):
-    db_conn, extractor_conn = load_data
+    db_conn, extractor_conn, expected_schema = load_data
 
     scanner: DbSchema = DbSchema(connection=extractor_conn)
     catalog = scanner.scan()
-    assert catalog.name == "piidb"
     assert len(catalog.schemata) == 1
 
     schema: Schema = catalog.schemata[0]
-    assert schema.name == "public"
+    assert schema.name == expected_schema
     assert len(schema.tables) == 3
 
     full_pii: Table = schema.tables[0]
