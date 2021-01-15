@@ -8,9 +8,9 @@ import click
 import yaml
 
 from dbcat import __version__
-from dbcat.catalog.scanners import Scanner
 from dbcat.dbcat import render
 from dbcat.log_mixin import LogMixin
+from dbcat.scanners import Scanner
 
 
 @click.group()
