@@ -16,6 +16,7 @@ SQLAlchemy = "*"
 google-api-python-client = "*"
 boto3 = "*"
 pymysql = "*"
+cryptography = "*"
 
 [dev-packages]
 black = "==19.10b0"
