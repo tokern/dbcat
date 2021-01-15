@@ -85,6 +85,8 @@ class Connection(object):
                 self.dialect = "postgres"
             elif self.metadata_source == "hivemetastore":
                 self.dialect = self.dialect
+            elif self.metadata_source == "mysql":
+                self.dialect = "mysql+pymysql"
             else:
                 self.dialect = self.metadata_source
             uri_port_placeholder = (
