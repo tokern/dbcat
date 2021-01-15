@@ -18,7 +18,7 @@ from databuilder.extractor.sql_alchemy_extractor import SQLAlchemyExtractor
 from databuilder.models.table_metadata import TableMetadata
 from pyhocon import ConfigFactory, ConfigTree
 
-from dbcat.catalog.metadata import Catalog, Column, Connection, Schema, Table
+from dbcat.catalog.metadata import Column, Connection, Database, Schema, Table
 from dbcat.scanners import Scanner
 
 
@@ -51,14 +51,14 @@ class DbSchema(Scanner):
         else:
             raise ValueError("{} is not supported".format(connection.metadata_source))
 
-    def scan(self) -> Catalog:
+    def scan(self) -> Database:
         try:
             self._extractor.init(
                 Scoped.get_scoped_conf(self._conf, self._extractor.get_scope())
             )
 
             record: TableMetadata = self._extractor.extract()
-            current_catalog: Catalog = Catalog(record.cluster, None)
+            current_catalog: Database = Database(record.cluster, None)
             current_schema: Schema = Schema(record.schema, current_catalog)
 
             while record:

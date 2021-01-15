@@ -152,9 +152,9 @@ class NamedObject(ABC, LogMixin):
         self._exclude_regex = [re.compile(exp, re.IGNORECASE) for exp in exclude]
 
 
-class Catalog(NamedObject):
+class Database(NamedObject):
     def __init__(self, name, parent):
-        super(Catalog, self).__init__(name, parent)
+        super(Database, self).__init__(name, parent)
 
     @property
     def schemata(self):
