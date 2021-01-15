@@ -8,8 +8,15 @@ python_version = "3.8"
 
 [packages]
 click = "*"
-pyyaml = "*"
-jinja2 = "*"
+PyYAML = "*"
+Jinja2 = "*"
+amundsen-databuilder = "*"
+psycopg2-binary = "*"
+SQLAlchemy = "*"
+google-api-python-client = "*"
+boto3 = "*"
+pymysql = "*"
+cryptography = "*"
 
 [dev-packages]
 black = "==19.10b0"

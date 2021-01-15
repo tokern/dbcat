@@ -1,8 +1,8 @@
-from dbcat.catalog.scanners import FileScanner
+from dbcat.scanners.json import File
 
 
 def test_file_scanner():
-    scanner = FileScanner("test", "test/catalog.json")
+    scanner = File("test", "test/catalog.json")
     catalog = scanner.scan()
     assert catalog.name == "test"
     assert len(catalog.schemata) == 1
