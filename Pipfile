@@ -18,6 +18,7 @@ boto3 = "*"
 pymysql = "*"
 cryptography = "*"
 snowflake-sqlalchemy = "*"
+sqlalchemy = "*"
 
 [dev-packages]
 black = "==19.10b0"
