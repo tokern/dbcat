@@ -1,97 +1,15 @@
-from contextlib import closing
 from typing import List
 
-import psycopg2
-import pymysql
-import pytest
 import yaml
 
 from dbcat.catalog.metadata import Connection, Schema, Table
-from dbcat.scanners.db import DbSchema
-
-pii_data_script = """
-create table no_pii(a text, b text);
-insert into no_pii values ('abc', 'def');
-insert into no_pii values ('xsfr', 'asawe');
-
-create table partial_pii(a text, b text);
-insert into partial_pii values ('917-908-2234', 'plkj');
-insert into partial_pii values ('215-099-2234', 'sfrf');
-
-create table full_pii(name text, location text);
-insert into full_pii values ('Jonathan Smith', 'Virginia');
-insert into full_pii values ('Chase Ryan', 'Chennai');
-
-"""
-
-
-pii_data_load = [
-    "create table no_pii(a text, b text)",
-    "insert into no_pii values ('abc', 'def')",
-    "insert into no_pii values ('xsfr', 'asawe')",
-    "create table partial_pii(a text, b text)",
-    "insert into partial_pii values ('917-908-2234', 'plkj')",
-    "insert into partial_pii values ('215-099-2234', 'sfrf')",
-    "create table full_pii(name text, location text)",
-    "insert into full_pii values ('Jonathan Smith', 'Virginia')",
-    "insert into full_pii values ('Chase Ryan', 'Chennai')",
-]
-
-pii_data_drop = ["DROP TABLE full_pii", "DROP TABLE partial_pii", "DROP TABLE no_pii"]
-
-
-def mysql_conn():
-    return (
-        pymysql.connect(
-            host="127.0.0.1", user="piiuser", password="p11secret", database="piidb",
-        ),
-        Connection(
-            type="mysql",
-            uri="127.0.0.1",
-            username="piiuser",
-            password="p11secret",
-            database="piidb",
-        ),
-        "piidb",
-    )
-
-
-def pg_conn():
-    return (
-        psycopg2.connect(
-            host="127.0.0.1", user="piiuser", password="p11secret", database="piidb"
-        ),
-        Connection(
-            type="postgres",
-            uri="127.0.0.1",
-            username="piiuser",
-            password="p11secret",
-            database="piidb",
-            cluster="public",
-        ),
-        "public",
-    )
-
-
-@pytest.fixture(params=[mysql_conn(), pg_conn()])
-def load_data(request):
-    db_conn, extractor_conn, expected_schema = request.param
-    with closing(db_conn) as conn:
-        with conn.cursor() as cursor:
-            for statement in pii_data_load:
-                cursor.execute(statement)
-            cursor.execute("commit")
-        yield conn, extractor_conn, expected_schema
-        with conn.cursor() as cursor:
-            for statement in pii_data_drop:
-                cursor.execute(statement)
-            cursor.execute("commit")
+from dbcat.scanners.db import DbScanner
 
 
 def test_catalog(load_data):
     db_conn, extractor_conn, expected_schema = load_data
 
-    scanner: DbSchema = DbSchema(connection=extractor_conn)
+    scanner: DbScanner = DbScanner(connection=extractor_conn)
     catalog = scanner.scan()
     assert len(catalog.schemata) == 1
 

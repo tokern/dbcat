@@ -1,11 +1,44 @@
-import pytest
+from contextlib import closing
+from typing import List
 
-from dbcat.dbcat import render
-from dbcat.scanners.json import File
+import yaml
+
+from dbcat import pull
+from dbcat.catalog.metadata import Connection
+from dbcat.catalog.orm import Connection as CatConnection
+
+conf = """
+catalog:
+  type: postgres
+  user: catalog_user
+  password: catal0g_passw0rd
+  host: 127.0.0.1
+  port: 5432
+  database: tokern
+connections:
+  - name: pg
+    type: postgres
+    database: piidb
+    username: piiuser
+    password: p11secret
+    port: 5432
+    uri: 127.0.0.1
+  - name: mys
+    type: mysql
+    database: piidb
+    username: piiuser
+    password: p11secret
+    port: 3306
+    uri: 127.0.0.1
+"""
 
 
-@pytest.mark.skip(reason="no way of currently testing this")
-def test_render():
-    scanner = File("test", "test/catalog.json")
-    catalog = scanner.scan()
-    render([catalog])
+def test_api(load_all_data, catalog_connection):
+    config = yaml.safe_load(conf)
+    catalog = CatConnection(**config["catalog"])
+    connections: List[Connection] = [
+        Connection(**conn) for conn in config["connections"]
+    ]
+
+    with closing(catalog) as catalog:
+        pull(catalog, connections)

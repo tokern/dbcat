@@ -1,6 +1,10 @@
+from contextlib import closing
+
 from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm import Session, relationship, sessionmaker
+
+from dbcat.catalog.metadata import Database
 
 Base: DeclarativeMeta = declarative_base()
 
@@ -51,6 +55,27 @@ class Connection:
     def close(self):
         if self._engine is not None:
             self._engine.dispose()
+
+    def save_catalog(self, database: Database) -> None:
+        with closing(self.session) as session:
+            db: CatDatabase = CatDatabase(name=database.name)
+            session.add(db)
+
+            for s in database.schemata:
+                schema = CatSchema(name=s.name, database=db)
+                session.add(schema)
+                for t in s.tables:
+                    table = CatTable(name=t.name, schema=schema)
+                    session.add(table)
+                    index = 0
+                    for c in t.columns:
+                        session.add(
+                            CatColumn(
+                                name=c.name, type=c.type, sort_order=index, table=table
+                            )
+                        )
+                        index += 1
+            session.commit()
 
 
 class CatDatabase(Base):

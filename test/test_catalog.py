@@ -1,7 +1,6 @@
 from contextlib import closing
 
 import pytest
-import yaml
 
 from dbcat.catalog.orm import CatColumn, CatDatabase, CatSchema, CatTable, Connection
 from dbcat.scanners.json import File
@@ -23,24 +22,6 @@ def test_file_scanner(load_catalog):
     assert len(default_schema.tables) == 8
 
 
-postgres_conf = """
-catalog:
-  type: postgres
-  user: piiuser
-  password: p11secret
-  host: 127.0.0.1
-  port: 5432
-  database: piidb
-"""
-
-
-@pytest.fixture
-def root_connection():
-    config = yaml.safe_load(postgres_conf)
-    with closing(Connection(**config["catalog"])) as conn:
-        yield conn
-
-
 def test_catalog_config(root_connection):
     conn: Connection = root_connection
     assert conn.type == "postgres"
@@ -54,47 +35,6 @@ def test_catalog_config(root_connection):
 def test_sqlalchemy_root(root_connection):
     with root_connection.engine.connect() as conn:
         conn.execute("select 1")
-
-
-@pytest.fixture
-def setup_catalog(root_connection):
-    with root_connection.engine.connect() as conn:
-        conn.execute("CREATE USER catalog_user PASSWORD 'catal0g_passw0rd'")
-        conn.execution_options(isolation_level="AUTOCOMMIT").execute(
-            "CREATE DATABASE tokern"
-        )
-        conn.execution_options(isolation_level="AUTOCOMMIT").execute(
-            "GRANT ALL PRIVILEGES ON DATABASE tokern TO catalog_user"
-        )
-
-    yield root_connection
-
-    with root_connection.engine.connect() as conn:
-        conn.execution_options(isolation_level="AUTOCOMMIT").execute(
-            "DROP DATABASE tokern"
-        )
-
-        conn.execution_options(isolation_level="AUTOCOMMIT").execute(
-            "DROP USER catalog_user"
-        )
-
-
-catalog_conf = """
-catalog:
-  type: postgres
-  user: catalog_user
-  password: catal0g_passw0rd
-  host: 127.0.0.1
-  port: 5432
-  database: tokern
-"""
-
-
-@pytest.fixture
-def catalog_connection(setup_catalog):
-    config = yaml.safe_load(catalog_conf)
-    with closing(Connection(**config["catalog"])) as conn:
-        yield conn
 
 
 def test_catalog_tables(catalog_connection: Connection):
@@ -111,31 +51,10 @@ def test_catalog_tables(catalog_connection: Connection):
 @pytest.fixture
 def save_catalog(load_catalog, catalog_connection):
     catalog = load_catalog
-    session = catalog_connection.session
-
-    try:
-        db: CatDatabase = CatDatabase(name=catalog.name)
-        session.add(db)
-
-        for s in catalog.schemata:
-            schema = CatSchema(name=s.name, database=db)
-            session.add(schema)
-            for t in s.tables:
-                table = CatTable(name=t.name, schema=schema)
-                session.add(table)
-                index = 0
-                for c in t.columns:
-                    session.add(
-                        CatColumn(
-                            name=c.name, type=c.type, sort_order=index, table=table
-                        )
-                    )
-                    index += 1
-        session.commit()
-        yield catalog_connection
-        session.delete(db)
-    finally:
-        session.close()
+    catalog_connection.save_catalog(catalog)
+    yield catalog_connection
+    with closing(catalog_connection.session) as session:
+        [session.delete(db) for db in session.query(CatDatabase).all()]
 
 
 def test_read_catalog(save_catalog):

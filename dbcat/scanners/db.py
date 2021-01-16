@@ -1,4 +1,5 @@
 import logging
+from contextlib import closing
 from typing import Any, Tuple, Type
 
 from databuilder import Scoped
@@ -22,42 +23,40 @@ from dbcat.catalog.metadata import Column, Connection, Database, Schema, Table
 from dbcat.scanners import Scanner
 
 
-class DbSchema(Scanner):
+class DbScanner(Scanner):
     def __init__(self, connection: Connection):
         super().__init__(connection.name)
         self._extractor: Extractor = None
         self._conf: ConfigTree = None
 
         if connection.type == "bigquery":
-            self._extractor, self._conf = DbSchema._create_big_query_extractor(
+            self._extractor, self._conf = DbScanner._create_big_query_extractor(
                 connection
             )
         elif connection.type == "glue":
-            self._extractor, self._conf = DbSchema._create_glue_extractor(connection)
+            self._extractor, self._conf = DbScanner._create_glue_extractor(connection)
         elif connection.type == "mysql":
-            self._extractor, self._conf = DbSchema._create_mysql_extractor(connection)
+            self._extractor, self._conf = DbScanner._create_mysql_extractor(connection)
         elif connection.type == "postgres":
-            self._extractor, self._conf = DbSchema._create_postgres_extractor(
+            self._extractor, self._conf = DbScanner._create_postgres_extractor(
                 connection
             )
         elif connection.type == "redshift":
-            self._extractor, self._conf = DbSchema._create_redshift_extractor(
+            self._extractor, self._conf = DbScanner._create_redshift_extractor(
                 connection
             )
         elif connection.type == "snowflake":
-            self._extractor, self._conf = DbSchema._create_snowflake_extractors(
+            self._extractor, self._conf = DbScanner._create_snowflake_extractors(
                 connection
             )
         else:
             raise ValueError("{} is not supported".format(connection.type))
 
     def scan(self) -> Database:
-        try:
-            self._extractor.init(
-                Scoped.get_scoped_conf(self._conf, self._extractor.get_scope())
-            )
+        with closing(self._extractor) as extractor:
+            extractor.init(Scoped.get_scoped_conf(self._conf, extractor.get_scope()))
 
-            record: TableMetadata = self._extractor.extract()
+            record: TableMetadata = extractor.extract()
             current_catalog: Database = Database(record.cluster, None)
             current_schema: Schema = Schema(record.schema, current_catalog)
 
@@ -72,11 +71,9 @@ class DbSchema(Scanner):
                     table.add_child(Column(c.name, table, c.type))
 
                 current_schema.add_child(table)
-                record = self._extractor.extract()
+                record = extractor.extract()
             current_catalog.add_child(current_schema)
             return current_catalog
-        finally:
-            self._extractor.close()
 
     @staticmethod
     def _create_sqlalchemy_extractor(
@@ -160,7 +157,7 @@ class DbSchema(Scanner):
         connection.where_clause_suffix = """
             WHERE TABLE_SCHEMA NOT IN ('information_schema', 'pg_catalog')
         """
-        return DbSchema._create_sqlalchemy_extractor(
+        return DbScanner._create_sqlalchemy_extractor(
             connection, PostgresMetadataExtractor
         )
 
@@ -169,7 +166,7 @@ class DbSchema(Scanner):
         connection.where_clause_suffix = """
             WHERE TABLE_SCHEMA NOT IN ('information_schema', 'pg_catalog')
         """
-        return DbSchema._create_sqlalchemy_extractor(
+        return DbScanner._create_sqlalchemy_extractor(
             connection, RedshiftMetadataExtractor
         )
 
