@@ -28,28 +28,28 @@ class DbSchema(Scanner):
         self._extractor: Extractor = None
         self._conf: ConfigTree = None
 
-        if connection.metadata_source == "bigquery":
+        if connection.type == "bigquery":
             self._extractor, self._conf = DbSchema._create_big_query_extractor(
                 connection
             )
-        elif connection.metadata_source == "glue":
+        elif connection.type == "glue":
             self._extractor, self._conf = DbSchema._create_glue_extractor(connection)
-        elif connection.metadata_source == "mysql":
+        elif connection.type == "mysql":
             self._extractor, self._conf = DbSchema._create_mysql_extractor(connection)
-        elif connection.metadata_source == "postgres":
+        elif connection.type == "postgres":
             self._extractor, self._conf = DbSchema._create_postgres_extractor(
                 connection
             )
-        elif connection.metadata_source == "redshift":
+        elif connection.type == "redshift":
             self._extractor, self._conf = DbSchema._create_redshift_extractor(
                 connection
             )
-        elif connection.metadata_source == "snowflake":
+        elif connection.type == "snowflake":
             self._extractor, self._conf = DbSchema._create_snowflake_extractors(
                 connection
             )
         else:
-            raise ValueError("{} is not supported".format(connection.metadata_source))
+            raise ValueError("{} is not supported".format(connection.type))
 
     def scan(self) -> Database:
         try:

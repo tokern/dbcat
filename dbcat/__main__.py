@@ -17,50 +17,76 @@ from dbcat.scanners import Scanner
 @click.version_option(__version__)
 @click.option("-l", "--log-level", help="Logging Level", default="INFO")
 @click.option(
-    "--docusaurus-version", help="Specify Docusaurus version", default="2.0.0-alpha.69"
-)
-@click.option(
-    "--working-dir",
-    type=click.Path(),
-    help="Working Directory to generate documentation",
+    "--config-dir", type=click.Path(), help="Config Directory",
 )
 @click.pass_context
-def main(ctx, log_level, docusaurus_version, working_dir):
+def main(ctx, log_level, config_dir):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
     ctx.ensure_object(dict)
 
-    ctx.obj["docusaurus_version"] = docusaurus_version
-
-    if working_dir is None:
-        working_dir = "~/.dbcat"
-    path = Path(working_dir)
+    if config_dir is None:
+        config_dir = "~/.dbcat"
+    path = Path(config_dir)
     path = path.expanduser().resolve()
 
-    ctx.obj["working_dir"] = path
+    ctx.obj["config_dir"] = path
 
 
 config_template = """
 # Instructions for configuring Tokern DbCat.
 # This configuration file is in YAML format.
 
-# The configuration file is a list of databases to scan.
-# The following database types are supported:
-# Files
-# BigQuery
 # Copy paste the section of the relevant database and fill in the values.
 
-catalogs:
-  - name: local
-    type: file
-    path: /dev/null
-  - name: local_dir
-    type: dir
-    path: /dev/null
-  - name: bq_db
+# The configuration file consists of
+# - a catalog sink where metadata is stored.
+# - a list of database connections to scan.
+
+
+# The following catalog types are supported:
+# - Files
+# - Postgres
+# - MySQL
+# Choose one of them
+
+catalog:
+## Postgres/MySQL
+  type: "postgres" or "mysql"
+  user: db_user
+  password: db_password
+  host: db_host
+  port: db_port
+
+connections:
+  - name: pg
+    type: postgres
+    database: db_database
+    username: db_user
+    password: db_password
+    port: db_port
+    uri: db_uri
+  - name: mys
+    type: mysql
+    database: db_database
+    username: db_user
+    password: db_password
+    port: db_port
+    uri: db_uri
+  - name: bq
     type: bigquery
-    key_path: path/to/gcp-credentials.json
-    project_credentials:  # Only one of key_path or project_credentials needed
-    project_id:
+    key_path: db_key_path
+    project_credentials:  db_creds
+    project_id: db_project_id
+  - name: gl
+    type: glue
+  - name: sf
+    type: snowflake
+    database: db_database
+    username: db_user
+    password: db_password
+    account: db_account
+    role: db_role
+    warehouse: db_warehouse
 """
 
 
@@ -70,16 +96,16 @@ catalogs:
 )
 @click.pass_obj
 def init(obj, delete):
-    working_dir = obj["working_dir"]
+    config_dir = obj["config_dir"]
     logger = LogMixin()
-    logger.logger.debug("Working directory is {}".format(working_dir))
+    logger.logger.debug("Config directory is {}".format(config_dir))
 
-    if working_dir.exists() and delete:
-        shutil.rmtree(working_dir)
+    if config_dir.exists() and delete:
+        shutil.rmtree(config_dir)
 
-    if not working_dir.exists():
-        os.mkdir(working_dir)
-        config = working_dir / "config"
+    if not config_dir.exists():
+        os.mkdir(config_dir)
+        config = config_dir / "config"
         with open(config, "w") as f:
             f.write(config_template)
 

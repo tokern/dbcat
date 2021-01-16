@@ -17,6 +17,7 @@ google-api-python-client = "*"
 boto3 = "*"
 pymysql = "*"
 cryptography = "*"
+snowflake-sqlalchemy = "*"
 
 [dev-packages]
 black = "==19.10b0"

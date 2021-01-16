@@ -2,13 +2,15 @@ import re
 from abc import ABC
 from typing import List, Optional
 
+from snowflake.sqlalchemy import URL
+
 from dbcat.log_mixin import LogMixin
 
 
 class Connection(object):
     def __init__(
         self,
-        metadata_source: str,
+        type: str,
         dialect: Optional[str] = None,
         uri: Optional[str] = None,
         port: Optional[int] = None,
@@ -35,14 +37,17 @@ class Connection(object):
         page_size: Optional[str] = None,
         filter_key: Optional[str] = None,
         where_clause_suffix: Optional[str] = "",
+        account: Optional[str] = None,
+        role: Optional[str] = None,
+        warehouse: Optional[str] = None,
         **kwargs,
     ):
 
         self.uri = uri
         self.port = port
-        if metadata_source is not None:
-            metadata_source = metadata_source.lower()
-        self.metadata_source = metadata_source
+        if type is not None:
+            type = type.lower()
+        self.type = type
         self.dialect = dialect
         self.username = username
         self.password = password
@@ -68,27 +73,35 @@ class Connection(object):
         self.page_size = page_size
         self.filter_key = filter_key
         self.where_clause_suffix = where_clause_suffix
+        self.account = account
+        self.role = role
+        self.warehouse = warehouse
         self.conn_string = self.infer_conn_string()
 
     def infer_conn_string(self):
-        if self.metadata_source == "bigquery":
+        if self.type == "bigquery":
             project_id = self.project_id
             conn_string = f"bigquery://{project_id}"
-        elif self.metadata_source == "neo4j":
-            conn_string = f"bolt://{self.uri}:{self.port}"
+        elif self.type == "snowflake":
+            conn_string = URL(
+                account=self.account,
+                user=self.username,
+                password=self.password,
+                database=self.database,
+                warehouse=self.warehouse,
+                role=self.role,
+            )
         else:
             username_password_placeholder = (
                 f"{self.username}:{self.password}" if self.password is not None else ""
             )
 
-            if self.metadata_source in ["redshift"]:
+            if self.type in ["redshift"]:
                 self.dialect = "postgres"
-            elif self.metadata_source == "hivemetastore":
-                self.dialect = self.dialect
-            elif self.metadata_source == "mysql":
+            elif self.type == "mysql":
                 self.dialect = "mysql+pymysql"
             else:
-                self.dialect = self.metadata_source
+                self.dialect = self.type
             uri_port_placeholder = (
                 f"{self.uri}:{self.port}" if self.port is not None else f"{self.uri}"
             )
