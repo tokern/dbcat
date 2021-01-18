@@ -43,7 +43,7 @@ setup(
     license="MIT",
     author="Tokern",
     author_email="info@tokern.io",
-    description="Open Source Data Dictionary For Snowflake, BigQuery, AWS Redshift and AWS Glue",
+    description="Open Source Data Catalog For Snowflake, BigQuery, AWS Redshift and AWS Glue",
     long_description=long_description,
     long_description_content_type="text/markdown",
     download_url="https://github.com/tokern/dbcat/tarball/" + __version__,
@@ -58,7 +58,7 @@ setup(
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    keywords="data-dictionary databases postgres snowflake redshift glue",
+    keywords="data-catalog databases postgres snowflake redshift glue",
     install_requires=[
         "amundsen-databuilder==4.0.4",
         "asn1crypto==1.4.0",
