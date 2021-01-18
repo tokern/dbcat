@@ -210,3 +210,7 @@ class Column(NamedObject):
     @property
     def type(self):
         return self._type
+
+    @type.setter
+    def type(self, value):
+        self._type = value

@@ -52,13 +52,13 @@ def test_catalog_tables(catalog_connection: Connection):
 def save_catalog(load_catalog, catalog_connection):
     catalog = load_catalog
     catalog_connection.save_catalog(catalog)
-    yield catalog_connection
+    yield catalog, catalog_connection
     with closing(catalog_connection.session) as session:
         [session.delete(db) for db in session.query(CatDatabase).all()]
 
 
 def test_read_catalog(save_catalog):
-    connection = save_catalog
+    catalog, connection = save_catalog
 
     with closing(connection.session) as session:
         dbs = session.query(CatDatabase).all()
@@ -107,3 +107,36 @@ def test_read_catalog(save_catalog):
         assert bytes_sent_column.name == "bytes_sent"
         assert bytes_sent_column.type == "BIGINT"
         assert bytes_sent_column.sort_order == 4
+
+
+def test_update_catalog(save_catalog):
+    catalog, connection = save_catalog
+
+    with closing(connection.session) as session:
+        page_counts = (
+            session.query(CatTable).filter(CatTable.name == "pagecounts").one()
+        )
+        group_col = (
+            session.query(CatColumn)
+            .filter(CatColumn.name == "group", CatColumn.table == page_counts)
+            .one()
+        )
+
+        assert group_col.type == "STRING"
+
+    print(catalog.schemata[0].tables[0].columns[0].type)
+    print(catalog.schemata[0].tables[0].columns[0].__class__.__name__)
+    catalog.schemata[0].tables[0].columns[0]._type = "BIGINT"
+    connection.save_catalog(catalog)
+
+    with closing(connection.session) as session:
+        page_counts = (
+            session.query(CatTable).filter(CatTable.name == "pagecounts").one()
+        )
+        group_col = (
+            session.query(CatColumn)
+            .filter(CatColumn.name == "group", CatColumn.table == page_counts)
+            .one()
+        )
+
+        assert group_col.type == "BIGINT"

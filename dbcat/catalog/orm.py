@@ -1,8 +1,10 @@
 from contextlib import closing
 
 from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm import Session, relationship, sessionmaker
+from sqlalchemy.orm.exc import NoResultFound
 
 from dbcat.catalog.metadata import Database
 
@@ -56,24 +58,47 @@ class Connection:
         if self._engine is not None:
             self._engine.dispose()
 
+    @staticmethod
+    def _get_one_or_create(
+        session, model, create_method="", create_method_kwargs=None, **kwargs
+    ) -> Base:
+        try:
+            return session.query(model).filter_by(**kwargs).one(), True
+        except NoResultFound:
+            kwargs.update(create_method_kwargs or {})
+            try:
+                with session.begin_nested():
+                    created = getattr(model, create_method, model)(**kwargs)
+                    session.add(created)
+                return created, False
+            except IntegrityError:
+                return session.query(model).filter_by(**kwargs).one(), True
+
     def save_catalog(self, database: Database) -> None:
         with closing(self.session) as session:
-            db: CatDatabase = CatDatabase(name=database.name)
-            session.add(db)
+            db, db_found = self._get_one_or_create(
+                session, CatDatabase, name=database.name
+            )
 
             for s in database.schemata:
-                schema = CatSchema(name=s.name, database=db)
-                session.add(schema)
+                schema, sch_found = self._get_one_or_create(
+                    session, CatSchema, name=s.name, database=db
+                )
                 for t in s.tables:
-                    table = CatTable(name=t.name, schema=schema)
-                    session.add(table)
+                    table, tbl_found = self._get_one_or_create(
+                        session, CatTable, name=t.name, schema=schema
+                    )
                     index = 0
                     for c in t.columns:
-                        session.add(
-                            CatColumn(
-                                name=c.name, type=c.type, sort_order=index, table=table
-                            )
+                        cc, col_found = self._get_one_or_create(
+                            session=session,
+                            model=CatColumn,
+                            create_method_kwargs={"type": c.type, "sort_order": index},
+                            name=c.name,
+                            table=table,
                         )
+                        if col_found and cc.type != c.type:
+                            cc.type = c.type
                         index += 1
             session.commit()
 
