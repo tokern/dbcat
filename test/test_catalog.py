@@ -2,7 +2,7 @@ from contextlib import closing
 
 import pytest
 
-from dbcat.catalog.orm import CatColumn, CatDatabase, CatSchema, CatTable, Connection
+from dbcat.catalog.orm import Catalog, CatColumn, CatDatabase, CatSchema, CatTable
 from dbcat.scanners.json import File
 
 
@@ -23,7 +23,7 @@ def test_file_scanner(load_catalog):
 
 
 def test_catalog_config(root_connection):
-    conn: Connection = root_connection
+    conn: Catalog = root_connection
     assert conn.type == "postgres"
     assert conn.user == "piiuser"
     assert conn.password == "p11secret"
@@ -37,7 +37,7 @@ def test_sqlalchemy_root(root_connection):
         conn.execute("select 1")
 
 
-def test_catalog_tables(catalog_connection: Connection):
+def test_catalog_tables(catalog_connection: Catalog):
     session = catalog_connection.session
     try:
         assert len(session.query(CatDatabase).all()) == 0
@@ -140,3 +140,27 @@ def test_update_catalog(save_catalog):
         )
 
         assert group_col.type == "BIGINT"
+
+
+def test_get_database(save_catalog):
+    catalog, connection = save_catalog
+    database = connection.get_database("test")
+    assert database.fqdn == "test"
+
+
+def test_get_schema(save_catalog):
+    catalog, connection = save_catalog
+    schema = connection.get_schema(("test", "default"))
+    assert schema.fqdn == ("test", "default")
+
+
+def test_get_table(save_catalog):
+    catalog, connection = save_catalog
+    table = connection.get_table(("test", "default", "page"))
+    assert table.fqdn == ("test", "default", "page")
+
+
+def test_get_column(save_catalog):
+    catalog, connection = save_catalog
+    column = connection.get_column(("test", "default", "page", "page_title"))
+    assert column.fqdn == ("test", "default", "page", "page_title")
