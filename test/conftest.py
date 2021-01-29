@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 from dbcat.catalog.metadata import Connection as DbConnection
-from dbcat.catalog.orm import Connection
+from dbcat.catalog.orm import Catalog
 
 postgres_conf = """
 catalog:
@@ -22,7 +22,7 @@ catalog:
 @pytest.fixture
 def root_connection():
     config = yaml.safe_load(postgres_conf)
-    with closing(Connection(**config["catalog"])) as conn:
+    with closing(Catalog(**config["catalog"])) as conn:
         yield conn
 
 
@@ -63,7 +63,7 @@ catalog:
 @pytest.fixture
 def catalog_connection(setup_catalog):
     config = yaml.safe_load(catalog_conf)
-    with closing(Connection(**config["catalog"])) as conn:
+    with closing(Catalog(**config["catalog"])) as conn:
         yield conn
 
 

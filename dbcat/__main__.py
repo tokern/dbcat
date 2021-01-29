@@ -9,7 +9,7 @@ import yaml
 
 from dbcat import __version__, pull
 from dbcat.catalog.metadata import Connection
-from dbcat.catalog.orm import Connection as CatConnection
+from dbcat.catalog.orm import Catalog as CatConnection
 from dbcat.log_mixin import LogMixin
 
 
