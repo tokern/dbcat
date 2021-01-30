@@ -6,7 +6,8 @@ import pytest
 import yaml
 
 from dbcat.catalog.metadata import Connection as DbConnection
-from dbcat.catalog.orm import Catalog
+from dbcat.catalog.orm import Catalog, CatDatabase
+from dbcat.scanners.json import File
 
 postgres_conf = """
 catalog:
@@ -19,14 +20,14 @@ catalog:
 """
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def root_connection():
     config = yaml.safe_load(postgres_conf)
     with closing(Catalog(**config["catalog"])) as conn:
         yield conn
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def setup_catalog(root_connection):
     with root_connection.engine.connect() as conn:
         conn.execute("CREATE USER catalog_user PASSWORD 'catal0g_passw0rd'")
@@ -60,7 +61,7 @@ catalog:
 """
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def catalog_connection(setup_catalog):
     config = yaml.safe_load(catalog_conf)
     with closing(Catalog(**config["catalog"])) as conn:
@@ -146,7 +147,7 @@ def load_data(request):
             cursor.execute("commit")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def load_all_data():
     params = [mysql_conn(), pg_conn()]
     for p in params:
@@ -166,3 +167,18 @@ def load_all_data():
     for p in params:
         db_conn, extractor_conn, expected_schema = p
         db_conn.close()
+
+
+@pytest.fixture(scope="session")
+def load_catalog():
+    scanner = File("test", "test/catalog.json")
+    yield scanner.scan()
+
+
+@pytest.fixture(scope="session")
+def save_catalog(load_catalog, catalog_connection):
+    catalog = load_catalog
+    catalog_connection.save_catalog(catalog)
+    yield catalog, catalog_connection
+    with closing(catalog_connection.session) as session:
+        [session.delete(db) for db in session.query(CatDatabase).all()]

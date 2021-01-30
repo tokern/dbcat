@@ -1,5 +1,5 @@
 from contextlib import closing
-from typing import Tuple
+from typing import List, Optional, Tuple
 
 from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
 from sqlalchemy.exc import IntegrityError
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, relationship, sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
 from dbcat.catalog.metadata import Database
+from dbcat.log_mixin import LogMixin
 
 Base: DeclarativeMeta = declarative_base()
 
@@ -26,6 +27,15 @@ class CatDatabase(Base):
     def fqdn(self):
         return self.name
 
+    def __repr__(self):
+        return "<Database: {}>".format(self.name)
+
+    def __eq__(self, other):
+        return self.fqdn == other.fqdn
+
+    def __hash__(self):
+        return hash(self.fqdn)
+
 
 class CatSchema(Base):
     __tablename__ = "schemata"
@@ -43,6 +53,15 @@ class CatSchema(Base):
     @property
     def fqdn(self):
         return self.database.name, self.name
+
+    def __repr__(self):
+        return "<Database: {}, Schema: {}>".format(self.database.name, self.name)
+
+    def __eq__(self, other):
+        return self.fqdn == other.fqdn
+
+    def __hash__(self):
+        return hash(self.fqdn)
 
 
 class CatTable(Base):
@@ -63,6 +82,17 @@ class CatTable(Base):
     @property
     def fqdn(self):
         return self.schema.database.name, self.schema.name, self.name
+
+    def __repr__(self):
+        return "<Database: {}, Schema: {}, Table: {}>".format(
+            self.schema.database.name, self.schema.name, self.name
+        )
+
+    def __eq__(self, other):
+        return self.fqdn == other.fqdn
+
+    def __hash__(self):
+        return hash(self.fqdn)
 
 
 class CatColumn(Base):
@@ -90,8 +120,22 @@ class CatColumn(Base):
             self.name,
         )
 
+    def __repr__(self):
+        return "<Database: {}, Schema: {}, Table: {}, Column: {}>".format(
+            self.table.schema.database.name,
+            self.table.schema.name,
+            self.table.name,
+            self.name,
+        )
 
-class Catalog:
+    def __eq__(self, other):
+        return self.fqdn == other.fqdn
+
+    def __hash__(self):
+        return hash(self.fqdn)
+
+
+class Catalog(LogMixin):
     def __init__(
         self,
         type: str,
@@ -141,7 +185,7 @@ class Catalog:
     @staticmethod
     def _get_one_or_create(
         session, model, create_method="", create_method_kwargs=None, **kwargs
-    ) -> Base:
+    ) -> Tuple[Base, bool]:
         try:
             return session.query(model).filter_by(**kwargs).one(), True
         except NoResultFound:
@@ -162,41 +206,137 @@ class Catalog:
                 .one()
             )
 
-    def get_schema(self, schema_name: Tuple) -> CatSchema:
+    def get_schema(self, database_name: str, schema_name: str) -> CatSchema:
         with closing(self.session) as session:
             return (
                 session.query(CatSchema)
                 .join(CatSchema.database)
-                .filter(CatDatabase.name == schema_name[0])
-                .filter(CatSchema.name == schema_name[1])
+                .filter(CatDatabase.name == database_name)
+                .filter(CatSchema.name == schema_name)
                 .one()
             )
 
-    def get_table(self, table_name: Tuple) -> CatTable:
+    def get_table(
+        self, database_name: str, schema_name: str, table_name: str
+    ) -> CatTable:
         with closing(self.session) as session:
             return (
                 session.query(CatTable)
                 .join(CatTable.schema)
                 .join(CatSchema.database)
-                .filter(CatDatabase.name == table_name[0])
-                .filter(CatSchema.name == table_name[1])
-                .filter(CatTable.name == table_name[2])
+                .filter(CatDatabase.name == database_name)
+                .filter(CatSchema.name == schema_name)
+                .filter(CatTable.name == table_name)
                 .one()
             )
 
-    def get_column(self, column_name: Tuple) -> CatColumn:
+    def get_columns_for_table(
+        self, table: CatTable, column_names: List[str] = []
+    ) -> List[CatColumn]:
+        with closing(self.session) as session:
+            stmt = (
+                session.query(CatColumn)
+                .join(CatColumn.table)
+                .join(CatTable.schema)
+                .join(CatSchema.database)
+                .filter(CatDatabase.name == table.schema.database.name)
+                .filter(CatSchema.name == table.schema.name)
+                .filter(CatTable.name == table.name)
+            )
+
+            if len(column_names) > 0:
+                stmt = stmt.filter(CatColumn.name.in_(column_names))
+
+            return stmt.all()
+
+    def get_column(
+        self, database_name: str, schema_name: str, table_name: str, column_name: str
+    ) -> CatColumn:
         with closing(self.session) as session:
             return (
                 session.query(CatColumn)
                 .join(CatColumn.table)
                 .join(CatTable.schema)
                 .join(CatSchema.database)
-                .filter(CatDatabase.name == column_name[0])
-                .filter(CatSchema.name == column_name[1])
-                .filter(CatTable.name == column_name[2])
-                .filter(CatColumn.name == column_name[3])
+                .filter(CatDatabase.name == database_name)
+                .filter(CatSchema.name == schema_name)
+                .filter(CatTable.name == table_name)
+                .filter(CatColumn.name == column_name)
                 .one()
             )
+
+    def search_database(self, database_like: str) -> List[CatDatabase]:
+        with closing(self.session) as session:
+            return (
+                session.query(CatDatabase)
+                .filter(CatDatabase.name.like(database_like))
+                .all()
+            )
+
+    def search_schema(
+        self, schema_like: str, database_like: Optional[str] = None
+    ) -> List[CatSchema]:
+        with closing(self.session) as session:
+            stmt = session.query(CatSchema)
+            if database_like is not None:
+                stmt = stmt.join(CatSchema.database).filter(
+                    CatDatabase.name.like(database_like)
+                )
+            stmt = stmt.filter(CatSchema.name.like(schema_like))
+            self.logger.debug(str(stmt))
+            return stmt.all()
+
+    def search_table(
+        self,
+        table_like: str,
+        schema_like: Optional[str] = None,
+        database_like: Optional[str] = None,
+    ) -> List[CatTable]:
+        with closing(self.session) as session:
+            stmt = session.query(CatTable)
+            if database_like is not None or schema_like is not None:
+                stmt = stmt.join(CatTable.schema)
+            if database_like is not None:
+                stmt = stmt.join(CatSchema.database).filter(
+                    CatDatabase.name.like(database_like)
+                )
+            if schema_like is not None:
+                stmt = stmt.filter(CatSchema.name.like(schema_like))
+
+            stmt = stmt.filter(CatTable.name.like(table_like))
+            self.logger.debug(str(stmt))
+            return stmt.all()
+
+    def search_column(
+        self,
+        column_like: str,
+        table_like: Optional[str] = None,
+        schema_like: Optional[str] = None,
+        database_like: Optional[str] = None,
+    ) -> List[CatColumn]:
+        with closing(self.session) as session:
+            stmt = session.query(CatColumn)
+            if (
+                database_like is not None
+                or schema_like is not None
+                or table_like is not None
+            ):
+                stmt = stmt.join(CatColumn.table)
+            if database_like is not None or schema_like is not None:
+                stmt = stmt.join(CatTable.schema)
+            if database_like is not None:
+                stmt = stmt.join(CatSchema.database).filter(
+                    CatDatabase.name.like(database_like)
+                )
+            if schema_like is not None:
+                stmt = stmt.filter(CatSchema.name.like(schema_like))
+            if table_like is not None:
+                stmt = stmt.filter(CatTable.name.like(table_like))
+
+            stmt = stmt.filter(CatColumn.name.like(column_like))
+            self.logger.debug(str(stmt))
+            print(str(stmt))
+            return stmt.all()
 
     def save_catalog(self, database: Database) -> None:
         with closing(self.session) as session:

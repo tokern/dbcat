@@ -1,15 +1,6 @@
 from contextlib import closing
 
-import pytest
-
 from dbcat.catalog.orm import Catalog, CatColumn, CatDatabase, CatSchema, CatTable
-from dbcat.scanners.json import File
-
-
-@pytest.fixture
-def load_catalog():
-    scanner = File("test", "test/catalog.json")
-    yield scanner.scan()
 
 
 def test_file_scanner(load_catalog):
@@ -46,15 +37,6 @@ def test_catalog_tables(catalog_connection: Catalog):
         assert len(session.query(CatColumn).all()) == 0
     finally:
         session.close()
-
-
-@pytest.fixture
-def save_catalog(load_catalog, catalog_connection):
-    catalog = load_catalog
-    catalog_connection.save_catalog(catalog)
-    yield catalog, catalog_connection
-    with closing(catalog_connection.session) as session:
-        [session.delete(db) for db in session.query(CatDatabase).all()]
 
 
 def test_read_catalog(save_catalog):
@@ -150,17 +132,76 @@ def test_get_database(save_catalog):
 
 def test_get_schema(save_catalog):
     catalog, connection = save_catalog
-    schema = connection.get_schema(("test", "default"))
+    schema = connection.get_schema("test", "default")
     assert schema.fqdn == ("test", "default")
 
 
 def test_get_table(save_catalog):
     catalog, connection = save_catalog
-    table = connection.get_table(("test", "default", "page"))
+    table = connection.get_table("test", "default", "page")
     assert table.fqdn == ("test", "default", "page")
+
+
+def test_get_table_columns(save_catalog):
+    file_catalog, catalog = save_catalog
+    table = catalog.get_table("test", "default", "page")
+    columns = catalog.get_columns_for_table(table)
+    assert len(columns) == 3
+
+
+def test_get_column_in(save_catalog):
+    file_catalog, catalog = save_catalog
+    table = catalog.get_table("test", "default", "page")
+    columns = catalog.get_columns_for_table(
+        table=table, column_names=["page_id", "page_latest"]
+    )
+    assert len(columns) == 2
+
+    columns = catalog.get_columns_for_table(table=table, column_names=["page_id"])
+    assert len(columns) == 1
 
 
 def test_get_column(save_catalog):
     catalog, connection = save_catalog
-    column = connection.get_column(("test", "default", "page", "page_title"))
+    column = connection.get_column("test", "default", "page", "page_title")
     assert column.fqdn == ("test", "default", "page", "page_title")
+
+
+def test_search_database(save_catalog):
+    catalog, connection = save_catalog
+    databases = connection.search_database("t%")
+    assert len(databases) == 1
+
+
+def test_search_schema(save_catalog):
+    catalog, connection = save_catalog
+    schemata = connection.search_schema(database_like="test", schema_like="def%")
+    assert len(schemata) == 1
+
+    name_only = connection.search_schema(schema_like="def%")
+    assert len(name_only) == 1
+
+
+def test_search_table(save_catalog):
+    catalog, connection = save_catalog
+    tables = connection.search_table(
+        database_like="test", schema_like="default", table_like="pageco%"
+    )
+    assert len(tables) == 1
+
+    name_only = connection.search_table(table_like="pageco%")
+    assert len(name_only) == 1
+
+
+def test_search_column(save_catalog):
+    catalog, connection = save_catalog
+    columns = connection.search_column(
+        database_like="test",
+        schema_like="default",
+        table_like="pagecounts",
+        column_like="views",
+    )
+    assert len(columns) == 1
+
+    name_only = connection.search_column(column_like="view%")
+    assert len(name_only) == 3
