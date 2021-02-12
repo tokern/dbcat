@@ -16,7 +16,7 @@ SQLAlchemy = "*"
 google-api-python-client = "*"
 boto3 = "*"
 pymysql = "*"
-cryptography = "*"
+cryptography = ">=3.3.2"
 snowflake-sqlalchemy = "*"
 sqlalchemy = "*"
 
