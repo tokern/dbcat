@@ -131,6 +131,14 @@ class CatColumn(Base):
     def __eq__(self, other):
         return self.fqdn == other.fqdn
 
+    def __lt__(self, other):
+        return (
+            self.table.schema.database.name < other.table.schema.database.name
+            or self.table.schema.name < other.table.schema.name
+            or self.table.name < other.table.name
+            or self.name < other.name
+        )
+
     def __hash__(self):
         return hash(self.fqdn)
 
