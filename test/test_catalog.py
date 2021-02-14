@@ -1,5 +1,7 @@
 from contextlib import closing
 
+import pytest
+
 from dbcat.catalog.orm import Catalog, CatColumn, CatDatabase, CatSchema, CatTable
 
 
@@ -182,15 +184,46 @@ def test_search_schema(save_catalog):
     assert len(name_only) == 1
 
 
+def test_search_tables(save_catalog):
+    catalog, connection = save_catalog
+    tables = connection.search_tables(
+        database_like="test", schema_like="default", table_like="page%"
+    )
+    assert len(tables) == 5
+
+    name_only = connection.search_tables(table_like="page%")
+    assert len(name_only) == 5
+
+
 def test_search_table(save_catalog):
     catalog, connection = save_catalog
-    tables = connection.search_table(
-        database_like="test", schema_like="default", table_like="pageco%"
+    table = connection.search_table(
+        database_like="test", schema_like="default", table_like="pagecount%"
     )
-    assert len(tables) == 1
+    assert table is not None
 
-    name_only = connection.search_table(table_like="pageco%")
-    assert len(name_only) == 1
+    name_only = connection.search_table(table_like="pagecount%")
+    assert name_only is not None
+
+
+def test_search_table_not_found(save_catalog):
+    catalog, connection = save_catalog
+    with pytest.raises(RuntimeError):
+        connection.search_table(
+            database_like="test", schema_like="default", table_like="blah"
+        )
+
+
+#    assert e.str() == "'blah' table not found"
+
+
+def test_search_table_multiple(save_catalog):
+    catalog, connection = save_catalog
+    with pytest.raises(RuntimeError):
+        connection.search_table(
+            database_like="test", schema_like="default", table_like="page%"
+        )
+        # assert e == "Ambiguous table name. Multiple matches found"
 
 
 def test_search_column(save_catalog):
