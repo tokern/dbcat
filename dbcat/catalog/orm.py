@@ -132,12 +132,7 @@ class CatColumn(Base):
         return self.fqdn == other.fqdn
 
     def __lt__(self, other):
-        return (
-            self.table.schema.database.name < other.table.schema.database.name
-            or self.table.schema.name < other.table.schema.name
-            or self.table.name < other.table.name
-            or self.name < other.name
-        )
+        return self.sort_order < other.sort_order
 
     def __hash__(self):
         return hash(self.fqdn)
@@ -254,7 +249,7 @@ class Catalog(LogMixin):
 
             if len(column_names) > 0:
                 stmt = stmt.filter(CatColumn.name.in_(column_names))
-
+            stmt = stmt.order_by(CatColumn.sort_order)
             return stmt.all()
 
     def get_column(
@@ -294,7 +289,7 @@ class Catalog(LogMixin):
             self.logger.debug(str(stmt))
             return stmt.all()
 
-    def search_table(
+    def search_tables(
         self,
         table_like: str,
         schema_like: Optional[str] = None,
@@ -314,6 +309,22 @@ class Catalog(LogMixin):
             stmt = stmt.filter(CatTable.name.like(table_like))
             self.logger.debug(str(stmt))
             return stmt.all()
+
+    def search_table(
+        self,
+        table_like: str,
+        schema_like: Optional[str] = None,
+        database_like: Optional[str] = None,
+    ) -> CatTable:
+        tables = self.search_tables(
+            table_like=table_like, schema_like=schema_like, database_like=database_like
+        )
+        if len(tables) == 0:
+            raise RuntimeError("'{}' table not found".format(table_like))
+        elif len(tables) > 1:
+            raise RuntimeError("Ambiguous table name. Multiple matches found")
+
+        return tables[0]
 
     def search_column(
         self,
