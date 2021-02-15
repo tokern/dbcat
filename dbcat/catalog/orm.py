@@ -131,8 +131,27 @@ class CatColumn(Base):
     def __eq__(self, other):
         return self.fqdn == other.fqdn
 
-    def __lt__(self, other):
-        return self.sort_order < other.sort_order
+    def __lt__(self, other) -> bool:
+        for s, o in zip(
+            [
+                self.table.schema.database.name,
+                self.table.schema.name,
+                self.table.name,
+                self.sort_order,
+            ],
+            [
+                other.table.schema.database.name,
+                other.table.schema.name,
+                other.table.name,
+                other.sort_order,
+            ],
+        ):
+            if s < o:
+                return True
+            elif s > o:
+                return False
+
+        return False
 
     def __hash__(self):
         return hash(self.fqdn)
