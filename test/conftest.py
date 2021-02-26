@@ -7,6 +7,7 @@ import yaml
 
 from dbcat.catalog.metadata import Connection as DbConnection
 from dbcat.catalog.orm import Catalog, CatDatabase
+from dbcat.dbcat import catalog_connection
 from dbcat.scanners.json import File
 
 postgres_conf = """
@@ -62,9 +63,8 @@ catalog:
 
 
 @pytest.fixture(scope="session")
-def catalog_connection(setup_catalog):
-    config = yaml.safe_load(catalog_conf)
-    with closing(Catalog(**config["catalog"])) as conn:
+def open_catalog_connection(setup_catalog):
+    with closing(catalog_connection(catalog_conf)) as conn:
         yield conn
 
 
@@ -176,9 +176,10 @@ def load_catalog():
 
 
 @pytest.fixture(scope="session")
-def save_catalog(load_catalog, catalog_connection):
-    catalog = load_catalog
-    catalog_connection.save_catalog(catalog)
-    yield catalog, catalog_connection
-    with closing(catalog_connection.session) as session:
+def save_catalog(load_catalog, open_catalog_connection):
+    database = load_catalog
+    catalog = open_catalog_connection
+    catalog.save_catalog(database)
+    yield database, catalog
+    with closing(catalog.session) as session:
         [session.delete(db) for db in session.query(CatDatabase).all()]
