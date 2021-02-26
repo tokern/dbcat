@@ -1,7 +1,8 @@
 from contextlib import closing
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm import Session, relationship, sessionmaker
@@ -157,6 +158,26 @@ class CatColumn(Base):
         return hash(self.fqdn)
 
 
+class ColumnLineage(Base):
+    __tablename__ = "column_lineage"
+
+    id = Column(Integer, primary_key=True)
+    payload = Column(JSONB)
+
+    source_id = Column(Integer, ForeignKey("columns.id"))
+    target_id = Column(Integer, ForeignKey("columns.id"))
+    source = relationship("CatColumn", foreign_keys=source_id, lazy="joined")
+    target = relationship("CatColumn", foreign_keys=target_id, lazy="joined")
+
+    def __init__(self, source: CatColumn, target: CatColumn, payload: Dict[Any, Any]):
+        self.source = source
+        self.target = target
+        self.payload = payload
+
+    def __repr__(self):
+        return "<Edge: {} -{}-> {}>".format(self.source, self.target, self.payload)
+
+
 class Catalog(LogMixin):
     def __init__(
         self,
@@ -219,6 +240,45 @@ class Catalog(LogMixin):
                 return created, False
             except IntegrityError:
                 return session.query(model).filter_by(**kwargs).one(), True
+
+    def add_column_lineage(
+        self, source_name: CatColumn, target_name: CatColumn, payload: Dict[Any, Any]
+    ) -> Tuple[ColumnLineage, bool]:
+        with closing(self.session) as session:
+            source = (
+                session.query(CatColumn)
+                .join(CatColumn.table)
+                .join(CatTable.schema)
+                .join(CatSchema.database)
+                .filter(CatDatabase.name == source_name.table.schema.database.name)
+                .filter(CatSchema.name == source_name.table.schema.name)
+                .filter(CatTable.name == source_name.table.name)
+                .filter(CatColumn.name == source_name.name)
+                .one()
+            )
+
+            target = (
+                session.query(CatColumn)
+                .join(CatColumn.table)
+                .join(CatTable.schema)
+                .join(CatSchema.database)
+                .filter(CatDatabase.name == target_name.table.schema.database.name)
+                .filter(CatSchema.name == target_name.table.schema.name)
+                .filter(CatTable.name == target_name.table.name)
+                .filter(CatColumn.name == target_name.name)
+                .one()
+            )
+
+            column_edge = self._get_one_or_create(
+                session,
+                ColumnLineage,
+                source=source,
+                target=target,
+                create_method_kwargs={"payload": payload},
+            )
+
+            session.commit()
+            return column_edge
 
     def get_database(self, database_name: str) -> CatDatabase:
         with closing(self.session) as session:
@@ -286,6 +346,10 @@ class Catalog(LogMixin):
                 .filter(CatColumn.name == column_name)
                 .one()
             )
+
+    def get_column_lineages(self) -> List[ColumnLineage]:
+        with closing(self.session) as session:
+            return session.query(ColumnLineage).all()
 
     def search_database(self, database_like: str) -> List[CatDatabase]:
         with closing(self.session) as session:
