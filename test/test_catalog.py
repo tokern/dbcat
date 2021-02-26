@@ -1,18 +1,58 @@
 from contextlib import closing
 
 import pytest
+import yaml
 
-from dbcat.catalog.orm import Catalog, CatColumn, CatDatabase, CatSchema, CatTable
+from dbcat.catalog.catalog import Catalog
+from dbcat.catalog.orm import CatColumn, CatSchema, CatSource, CatTable, ColumnLineage
 
 
-def test_file_scanner(load_catalog):
-    catalog = load_catalog
-    assert catalog.name == "test"
-    assert len(catalog.schemata) == 1
+class File:
+    def __init__(self, name: str, path: str, catalog: Catalog):
+        self.name = name
+        self._path = path
+        self._catalog = catalog
 
-    default_schema = catalog.schemata[0]
-    assert default_schema.name == "default"
-    assert len(default_schema.tables) == 8
+    @property
+    def path(self):
+        return self._path
+
+    def scan(self):
+        import json
+
+        with open(self.path, "r") as file:
+            content = json.load(file)
+
+        with self._catalog:
+            source = self._catalog.add_source(
+                name=content["name"], type=content["type"]
+            )
+            for s in content["schemata"]:
+                schema = self._catalog.add_schema(s["name"], source=source)
+
+                for t in s["tables"]:
+                    table = self._catalog.add_table(t["name"], schema)
+
+                    index = 0
+                    for c in t["columns"]:
+                        self._catalog.add_column(
+                            column_name=c["name"],
+                            type=c["type"],
+                            sort_order=index,
+                            table=table,
+                        )
+                        index += 1
+
+
+@pytest.fixture(scope="module")
+def save_catalog(open_catalog_connection):
+    catalog = open_catalog_connection
+    scanner = File("test", "test/catalog.json", catalog)
+    scanner.scan()
+    yield catalog
+    with closing(catalog.session) as session:
+        [session.delete(db) for db in session.query(CatSource).all()]
+        session.commit()
 
 
 def test_catalog_config(root_connection):
@@ -30,10 +70,10 @@ def test_sqlalchemy_root(root_connection):
         conn.execute("select 1")
 
 
-def test_catalog_tables(catalog_connection: Catalog):
-    session = catalog_connection.session
+def test_catalog_tables(open_catalog_connection: Catalog):
+    session = open_catalog_connection.session
     try:
-        assert len(session.query(CatDatabase).all()) == 0
+        assert len(session.query(CatSource).all()) == 0
         assert len(session.query(CatSchema).all()) == 0
         assert len(session.query(CatTable).all()) == 0
         assert len(session.query(CatColumn).all()) == 0
@@ -42,10 +82,10 @@ def test_catalog_tables(catalog_connection: Catalog):
 
 
 def test_read_catalog(save_catalog):
-    catalog, connection = save_catalog
+    catalog = save_catalog
 
-    with closing(connection.session) as session:
-        dbs = session.query(CatDatabase).all()
+    with closing(catalog.session) as session:
+        dbs = session.query(CatSource).all()
         assert len(dbs) == 1
         db = dbs[0]
         assert db.name == "test"
@@ -93,10 +133,11 @@ def test_read_catalog(save_catalog):
         assert bytes_sent_column.sort_order == 4
 
 
+@pytest.mark.skip
 def test_update_catalog(save_catalog):
-    catalog, connection = save_catalog
+    catalog = save_catalog
 
-    with closing(connection.session) as session:
+    with closing(catalog.session) as session:
         page_counts = (
             session.query(CatTable).filter(CatTable.name == "pagecounts").one()
         )
@@ -108,12 +149,10 @@ def test_update_catalog(save_catalog):
 
         assert group_col.type == "STRING"
 
-    print(catalog.schemata[0].tables[0].columns[0].type)
-    print(catalog.schemata[0].tables[0].columns[0].__class__.__name__)
     catalog.schemata[0].tables[0].columns[0]._type = "BIGINT"
-    connection.save_catalog(catalog)
+    catalog.save_catalog(catalog)
 
-    with closing(connection.session) as session:
+    with closing(catalog.session) as session:
         page_counts = (
             session.query(CatTable).filter(CatTable.name == "pagecounts").one()
         )
@@ -127,32 +166,32 @@ def test_update_catalog(save_catalog):
 
 
 def test_get_database(save_catalog):
-    catalog, connection = save_catalog
-    database = connection.get_database("test")
+    catalog = save_catalog
+    database = catalog.get_source("test")
     assert database.fqdn == "test"
 
 
 def test_get_schema(save_catalog):
-    catalog, connection = save_catalog
-    schema = connection.get_schema("test", "default")
+    catalog = save_catalog
+    schema = catalog.get_schema("test", "default")
     assert schema.fqdn == ("test", "default")
 
 
 def test_get_table(save_catalog):
-    catalog, connection = save_catalog
-    table = connection.get_table("test", "default", "page")
+    catalog = save_catalog
+    table = catalog.get_table("test", "default", "page")
     assert table.fqdn == ("test", "default", "page")
 
 
 def test_get_table_columns(save_catalog):
-    file_catalog, catalog = save_catalog
+    catalog = save_catalog
     table = catalog.get_table("test", "default", "page")
     columns = catalog.get_columns_for_table(table)
     assert len(columns) == 3
 
 
 def test_get_column_in(save_catalog):
-    file_catalog, catalog = save_catalog
+    catalog = save_catalog
     table = catalog.get_table("test", "default", "page")
     columns = catalog.get_columns_for_table(
         table=table, column_names=["page_id", "page_latest"]
@@ -164,53 +203,53 @@ def test_get_column_in(save_catalog):
 
 
 def test_get_column(save_catalog):
-    catalog, connection = save_catalog
-    column = connection.get_column("test", "default", "page", "page_title")
+    catalog = save_catalog
+    column = catalog.get_column("test", "default", "page", "page_title")
     assert column.fqdn == ("test", "default", "page", "page_title")
 
 
-def test_search_database(save_catalog):
-    catalog, connection = save_catalog
-    databases = connection.search_database("t%")
+def test_search_source(save_catalog):
+    catalog = save_catalog
+    databases = catalog.search_sources("t%")
     assert len(databases) == 1
 
 
 def test_search_schema(save_catalog):
-    catalog, connection = save_catalog
-    schemata = connection.search_schema(database_like="test", schema_like="def%")
+    catalog = save_catalog
+    schemata = catalog.search_schema(source_like="test", schema_like="def%")
     assert len(schemata) == 1
 
-    name_only = connection.search_schema(schema_like="def%")
+    name_only = catalog.search_schema(schema_like="def%")
     assert len(name_only) == 1
 
 
 def test_search_tables(save_catalog):
-    catalog, connection = save_catalog
-    tables = connection.search_tables(
-        database_like="test", schema_like="default", table_like="page%"
+    catalog = save_catalog
+    tables = catalog.search_tables(
+        source_like="test", schema_like="default", table_like="page%"
     )
     assert len(tables) == 5
 
-    name_only = connection.search_tables(table_like="page%")
+    name_only = catalog.search_tables(table_like="page%")
     assert len(name_only) == 5
 
 
 def test_search_table(save_catalog):
-    catalog, connection = save_catalog
-    table = connection.search_table(
-        database_like="test", schema_like="default", table_like="pagecount%"
+    catalog = save_catalog
+    table = catalog.search_table(
+        source_like="test", schema_like="default", table_like="pagecount%"
     )
     assert table is not None
 
-    name_only = connection.search_table(table_like="pagecount%")
+    name_only = catalog.search_table(table_like="pagecount%")
     assert name_only is not None
 
 
 def test_search_table_not_found(save_catalog):
-    catalog, connection = save_catalog
+    catalog = save_catalog
     with pytest.raises(RuntimeError):
-        connection.search_table(
-            database_like="test", schema_like="default", table_like="blah"
+        catalog.search_table(
+            source_like="test", schema_like="default", table_like="blah"
         )
 
 
@@ -218,23 +257,131 @@ def test_search_table_not_found(save_catalog):
 
 
 def test_search_table_multiple(save_catalog):
-    catalog, connection = save_catalog
+    catalog = save_catalog
     with pytest.raises(RuntimeError):
-        connection.search_table(
-            database_like="test", schema_like="default", table_like="page%"
+        catalog.search_table(
+            source_like="test", schema_like="default", table_like="page%"
         )
         # assert e == "Ambiguous table name. Multiple matches found"
 
 
 def test_search_column(save_catalog):
-    catalog, connection = save_catalog
-    columns = connection.search_column(
-        database_like="test",
+    catalog = save_catalog
+    columns = catalog.search_column(
+        source_like="test",
         schema_like="default",
         table_like="pagecounts",
         column_like="views",
     )
     assert len(columns) == 1
 
-    name_only = connection.search_column(column_like="view%")
+    name_only = catalog.search_column(column_like="view%")
     assert len(name_only) == 3
+
+
+def test_add_sources(open_catalog_connection):
+    catalog = open_catalog_connection
+    with open("test/connections.yaml") as f:
+        connections = yaml.safe_load(f)
+
+    with catalog:
+        for c in connections["connections"]:
+            print(c)
+            catalog.add_source(**c)
+
+    connections = catalog.search_sources(source_like="%")
+    assert len(connections) == 6
+
+    # pg
+    pg_connection = connections[1]
+    assert pg_connection.name == "pg"
+    assert pg_connection.type == "postgres"
+    assert pg_connection.database == "db_database"
+    assert pg_connection.username == "db_user"
+    assert pg_connection.password == "db_password"
+    assert pg_connection.port == "db_port"
+    assert pg_connection.uri == "db_uri"
+
+    # mysql
+    mysql_conn = connections[2]
+    assert mysql_conn.name == "mys"
+    assert mysql_conn.type == "mysql"
+    assert mysql_conn.database == "db_database"
+    assert mysql_conn.username == "db_user"
+    assert mysql_conn.password == "db_password"
+    assert mysql_conn.port == "db_port"
+    assert mysql_conn.uri == "db_uri"
+
+    # bigquery
+    bq_conn = connections[3]
+    assert bq_conn.name == "bq"
+    assert bq_conn.type == "bigquery"
+    assert bq_conn.key_path == "db_key_path"
+    assert bq_conn.project_credentials == "db_creds"
+    assert bq_conn.project_id == "db_project_id"
+
+    # glue
+    glue_conn = connections[4]
+    assert glue_conn.name == "gl"
+    assert glue_conn.type == "glue"
+
+    # snowflake
+    sf_conn = connections[5]
+    assert sf_conn.name == "sf"
+    assert sf_conn.type == "snowflake"
+    assert sf_conn.database == "db_database"
+    assert sf_conn.username == "db_user"
+    assert sf_conn.password == "db_password"
+    assert sf_conn.account == "db_account"
+    assert sf_conn.role == "db_role"
+    assert sf_conn.warehouse == "db_warehouse"
+
+
+def test_add_edge(save_catalog):
+    catalog = save_catalog
+    expected_edges = [
+        (
+            ("test", "default", "page", "page_id"),
+            ("test", "default", "page_lookup_nonredirect", "redirect_id"),
+        ),
+        (
+            ("test", "default", "page", "page_id"),
+            ("test", "default", "page_lookup_nonredirect", "page_id"),
+        ),
+        (
+            ("test", "default", "page", "page_title"),
+            ("test", "default", "page_lookup_nonredirect", "redirect_title"),
+        ),
+        (
+            ("test", "default", "page", "page_title"),
+            ("test", "default", "page_lookup_nonredirect", "true_title"),
+        ),
+        (
+            ("test", "default", "page", "page_latest"),
+            ("test", "default", "page_lookup_nonredirect", "page_version"),
+        ),
+    ]
+
+    with catalog:
+        for edge in expected_edges:
+            source = catalog.get_column(
+                database_name=edge[0][0],
+                schema_name=edge[0][1],
+                table_name=edge[0][2],
+                column_name=edge[0][3],
+            )
+
+            target = catalog.get_column(
+                database_name=edge[1][0],
+                schema_name=edge[1][1],
+                table_name=edge[1][2],
+                column_name=edge[1][3],
+            )
+
+            catalog.add_column_lineage(source, target, {})
+
+    with closing(catalog.session) as session:
+        all_edges = session.query(ColumnLineage).all()
+        assert set([(e.source.fqdn, e.target.fqdn) for e in all_edges]) == set(
+            expected_edges
+        )

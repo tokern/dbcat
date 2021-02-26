@@ -5,10 +5,8 @@ import pymysql
 import pytest
 import yaml
 
-from dbcat.catalog.metadata import Connection as DbConnection
-from dbcat.catalog.orm import Catalog, CatDatabase
+from dbcat.catalog.catalog import Catalog
 from dbcat.dbcat import catalog_connection
-from dbcat.scanners.json import File
 
 postgres_conf = """
 catalog:
@@ -104,13 +102,6 @@ def mysql_conn():
         pymysql.connect(
             host="127.0.0.1", user="piiuser", password="p11secret", database="piidb",
         ),
-        DbConnection(
-            type="mysql",
-            uri="127.0.0.1",
-            username="piiuser",
-            password="p11secret",
-            database="piidb",
-        ),
         "piidb",
     )
 
@@ -120,27 +111,19 @@ def pg_conn():
         psycopg2.connect(
             host="127.0.0.1", user="piiuser", password="p11secret", database="piidb"
         ),
-        DbConnection(
-            type="postgres",
-            uri="127.0.0.1",
-            username="piiuser",
-            password="p11secret",
-            database="piidb",
-            cluster="public",
-        ),
         "public",
     )
 
 
 @pytest.fixture(params=[mysql_conn(), pg_conn()])
 def load_data(request):
-    db_conn, extractor_conn, expected_schema = request.param
+    db_conn, expected_schema = request.param
     with closing(db_conn) as conn:
         with conn.cursor() as cursor:
             for statement in pii_data_load:
                 cursor.execute(statement)
             cursor.execute("commit")
-        yield conn, extractor_conn, expected_schema
+        yield conn, expected_schema
         with conn.cursor() as cursor:
             for statement in pii_data_drop:
                 cursor.execute(statement)
@@ -151,35 +134,19 @@ def load_data(request):
 def load_all_data():
     params = [mysql_conn(), pg_conn()]
     for p in params:
-        db_conn, extractor_conn, expected_schema = p
+        db_conn, expected_schema = p
         with db_conn.cursor() as cursor:
             for statement in pii_data_load:
                 cursor.execute(statement)
             cursor.execute("commit")
     yield params
     for p in params:
-        db_conn, extractor_conn, expected_schema = p
+        db_conn, expected_schema = p
         with db_conn.cursor() as cursor:
             for statement in pii_data_drop:
                 cursor.execute(statement)
             cursor.execute("commit")
 
     for p in params:
-        db_conn, extractor_conn, expected_schema = p
+        db_conn, expected_schema = p
         db_conn.close()
-
-
-@pytest.fixture(scope="session")
-def load_catalog():
-    scanner = File("test", "test/catalog.json")
-    yield scanner.scan()
-
-
-@pytest.fixture(scope="session")
-def save_catalog(load_catalog, open_catalog_connection):
-    database = load_catalog
-    catalog = open_catalog_connection
-    catalog.save_catalog(database)
-    yield database, catalog
-    with closing(catalog.session) as session:
-        [session.delete(db) for db in session.query(CatDatabase).all()]

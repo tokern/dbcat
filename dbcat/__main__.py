@@ -2,14 +2,12 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import List
 
 import click
 import yaml
 
 from dbcat import __version__, pull
-from dbcat.catalog.metadata import Connection
-from dbcat.catalog.orm import Catalog as CatConnection
+from dbcat.catalog.catalog import Catalog
 from dbcat.log_mixin import LogMixin
 
 
@@ -128,9 +126,5 @@ def pull_cli(
 
     logger.logger.debug(config)
 
-    catalog = CatConnection(**config["catalog"])
-    connections: List[Connection] = [
-        Connection(**conn) for conn in config["connections"]
-    ]
-
-    pull(catalog, connections)
+    catalog = Catalog(**config["catalog"])
+    pull(catalog)

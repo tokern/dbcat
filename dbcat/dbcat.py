@@ -1,11 +1,8 @@
-from typing import List, Tuple
-
 import yaml
 
-from dbcat.catalog.metadata import Connection
-from dbcat.catalog.orm import Catalog, CatColumn, ColumnLineage
+from dbcat.catalog.catalog import Catalog
+from dbcat.catalog.db import DbScanner
 from dbcat.log_mixin import LogMixin
-from dbcat.scanners.db import DbScanner
 
 
 def catalog_connection(config: str) -> Catalog:
@@ -13,19 +10,14 @@ def catalog_connection(config: str) -> Catalog:
     return Catalog(**config_yaml["catalog"])
 
 
-def add_edge(
-    catalog: Catalog, source: CatColumn, target: CatColumn
-) -> Tuple[ColumnLineage, bool]:
-    return catalog.add_column_lineage(
-        source_name=source, target_name=target, payload={}
-    )
-
-
-def pull(catalog: Catalog, connections: List[Connection]) -> None:
-    scanners = [DbScanner(connection) for connection in connections]
-
+def pull(catalog: Catalog) -> None:
     logger = LogMixin()
+
+    scanners = []
+    with catalog:
+        for source in catalog.search_sources("%"):
+            scanners.append(DbScanner(catalog, source))
+
     for scanner in scanners:
         logger.logger.debug("Scanning {}".format(scanner.name))
-        database = scanner.scan()
-        catalog.save_catalog(database)
+        scanner.scan()

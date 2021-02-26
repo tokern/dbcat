@@ -1,35 +1,125 @@
-from contextlib import closing
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
-from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
+from snowflake.sqlalchemy import URL
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
-from sqlalchemy.orm import Session, relationship, sessionmaker
-from sqlalchemy.orm.exc import NoResultFound
-
-from dbcat.catalog.metadata import Database
-from dbcat.log_mixin import LogMixin
+from sqlalchemy.orm import relationship
 
 Base: DeclarativeMeta = declarative_base()
 
 
-class CatDatabase(Base):
-    __tablename__ = "databases"
+class CatSource(Base):
+    __tablename__ = "sources"
 
     id = Column(Integer, primary_key=True)
+    type = Column(String)
     name = Column(String)
-    schemata = relationship("CatSchema", back_populates="database")
+    dialect = Column(String)
+    uri = Column(String)
+    port = Column(String)
+    username = Column(String)
+    password = Column(String)
+    database = Column(String)
+    instance = Column(String)
+    cluster = Column(String)
+    project_id = Column(String)
+    project_credentials = Column(String)
+    page_size = Column(String)
+    filter_key = Column(String)
+    included_tables_regex = Column(String)
+    key_path = Column(String)
+    account = Column(String)
+    role = Column(String)
+    warehouse = Column(String)
+    schemata = relationship("CatSchema", back_populates="source")
 
-    def __init__(self, name: str):
+    def __init__(
+        self,
+        type: str,
+        name: str,
+        dialect: Optional[str] = None,
+        uri: Optional[str] = None,
+        port: Optional[int] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        database: Optional[str] = None,
+        instance: Optional[str] = None,
+        cluster: Optional[str] = None,
+        project_id: Optional[str] = None,
+        project_credentials: Optional[str] = None,
+        page_size: Optional[str] = None,
+        filter_key: Optional[str] = None,
+        included_tables_regex: Optional[str] = None,
+        key_path: Optional[str] = None,
+        account: Optional[str] = None,
+        role: Optional[str] = None,
+        warehouse: Optional[str] = None,
+        **kwargs,
+    ):
+        self.uri = uri
+        self.port = port
+        if type is not None:
+            type = type.lower()
+        self.type = type
+        self.dialect = dialect
+        self.username = username
+        self.password = password
         self.name = name
+        self.database = database
+        self.instance = instance
+        self.cluster = cluster
+        self.project_id = project_id
+        self.project_credentials = project_credentials
+        self.page_size = page_size
+        self.filter_key = filter_key
+        self.included_tables_regex = included_tables_regex
+        self.key_path = key_path
+        self.role = role
+        self.account = account
+        self.warehouse = warehouse
+
+    @property
+    def conn_string(self):
+        if self.type == "bigquery":
+            project_id = self.project_id
+            conn_string = f"bigquery://{project_id}"
+        elif self.type == "snowflake":
+            conn_string = URL(
+                account=self.account,
+                user=self.username,
+                password=self.password,
+                database=self.database,
+                warehouse=self.warehouse,
+                role=self.role,
+            )
+        else:
+            username_password_placeholder = (
+                f"{self.username}:{self.password}" if self.password is not None else ""
+            )
+
+            if self.type in ["redshift"]:
+                self.dialect = "postgres"
+            elif self.type == "mysql":
+                self.dialect = "mysql+pymysql"
+            else:
+                self.dialect = self.type
+            uri_port_placeholder = (
+                f"{self.uri}:{self.port}" if self.port is not None else f"{self.uri}"
+            )
+
+            database = self.database or ""
+
+            conn_string = f"{self.dialect}://{username_password_placeholder}@{uri_port_placeholder}/{database}"
+
+        return conn_string
 
     @property
     def fqdn(self):
         return self.name
 
     def __repr__(self):
-        return "<Database: {}>".format(self.name)
+        return "<Source: {}>".format(self.name)
 
     def __eq__(self, other):
         return self.fqdn == other.fqdn
@@ -43,20 +133,20 @@ class CatSchema(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    database_id = Column(Integer, ForeignKey("databases.id"))
-    database = relationship("CatDatabase", back_populates="schemata", lazy="joined")
+    source_id = Column(Integer, ForeignKey("sources.id"))
+    source = relationship("CatSource", back_populates="schemata", lazy="joined")
     tables = relationship("CatTable", back_populates="schema")
 
-    def __init__(self, name: str, database: CatDatabase):
+    def __init__(self, name: str, source: CatSource):
         self.name = name
-        self.database = database
+        self.source = source
 
     @property
     def fqdn(self):
-        return self.database.name, self.name
+        return self.source.name, self.name
 
     def __repr__(self):
-        return "<Database: {}, Schema: {}>".format(self.database.name, self.name)
+        return "<Database: {}, Schema: {}>".format(self.source.name, self.name)
 
     def __eq__(self, other):
         return self.fqdn == other.fqdn
@@ -82,11 +172,11 @@ class CatTable(Base):
 
     @property
     def fqdn(self):
-        return self.schema.database.name, self.schema.name, self.name
+        return self.schema.source.name, self.schema.name, self.name
 
     def __repr__(self):
-        return "<Database: {}, Schema: {}, Table: {}>".format(
-            self.schema.database.name, self.schema.name, self.name
+        return "<Source: {}, Schema: {}, Table: {}>".format(
+            self.schema.source.name, self.schema.name, self.name
         )
 
     def __eq__(self, other):
@@ -115,15 +205,15 @@ class CatColumn(Base):
     @property
     def fqdn(self):
         return (
-            self.table.schema.database.name,
+            self.table.schema.source.name,
             self.table.schema.name,
             self.table.name,
             self.name,
         )
 
     def __repr__(self):
-        return "<Database: {}, Schema: {}, Table: {}, Column: {}>".format(
-            self.table.schema.database.name,
+        return "<Source: {}, Schema: {}, Table: {}, Column: {}>".format(
+            self.table.schema.source.name,
             self.table.schema.name,
             self.table.name,
             self.name,
@@ -135,7 +225,7 @@ class CatColumn(Base):
     def __lt__(self, other) -> bool:
         for s, o in zip(
             [
-                self.table.schema.database.name,
+                self.table.schema.source.name,
                 self.table.schema.name,
                 self.table.name,
                 self.sort_order,
@@ -176,294 +266,3 @@ class ColumnLineage(Base):
 
     def __repr__(self):
         return "<Edge: {} -{}-> {}>".format(self.source, self.target, self.payload)
-
-
-class Catalog(LogMixin):
-    def __init__(
-        self,
-        type: str,
-        user: str,
-        password: str,
-        database: str,
-        host: str,
-        port: str = None,
-    ):
-        self.type: str = type
-        self.user: str = user
-        self.password: str = password
-        self.host: str = host
-        self.port: int = int(port) if port is not None else 5432
-        self.database: str = database
-        self._engine: object = None
-        self._session_factory = None
-
-    @property
-    def engine(self) -> object:
-        if self._engine is None:
-            self._engine = create_engine(
-                "{type}://{user}:{password}@{host}:{port}/{database}".format(
-                    type=self.type,
-                    user=self.user,
-                    password=self.password,
-                    host=self.host,
-                    port=self.port,
-                    database=self.database,
-                )
-            )
-        return self._engine
-
-    @property
-    def session(self) -> Session:
-        if self._session_factory is None:
-            Base.metadata.create_all(self.engine)
-            self._session_factory = sessionmaker(bind=self.engine)
-
-        # See https://github.com/python/mypy/issues/4805
-        return self._session_factory()  # type: ignore
-
-    def close(self):
-        if self._engine is not None:
-            self._engine.dispose()
-
-    @staticmethod
-    def _get_one_or_create(
-        session, model, create_method="", create_method_kwargs=None, **kwargs
-    ) -> Tuple[Base, bool]:
-        try:
-            return session.query(model).filter_by(**kwargs).one(), True
-        except NoResultFound:
-            kwargs.update(create_method_kwargs or {})
-            try:
-                with session.begin_nested():
-                    created = getattr(model, create_method, model)(**kwargs)
-                    session.add(created)
-                return created, False
-            except IntegrityError:
-                return session.query(model).filter_by(**kwargs).one(), True
-
-    def add_column_lineage(
-        self, source_name: CatColumn, target_name: CatColumn, payload: Dict[Any, Any]
-    ) -> Tuple[ColumnLineage, bool]:
-        with closing(self.session) as session:
-            source = (
-                session.query(CatColumn)
-                .join(CatColumn.table)
-                .join(CatTable.schema)
-                .join(CatSchema.database)
-                .filter(CatDatabase.name == source_name.table.schema.database.name)
-                .filter(CatSchema.name == source_name.table.schema.name)
-                .filter(CatTable.name == source_name.table.name)
-                .filter(CatColumn.name == source_name.name)
-                .one()
-            )
-
-            target = (
-                session.query(CatColumn)
-                .join(CatColumn.table)
-                .join(CatTable.schema)
-                .join(CatSchema.database)
-                .filter(CatDatabase.name == target_name.table.schema.database.name)
-                .filter(CatSchema.name == target_name.table.schema.name)
-                .filter(CatTable.name == target_name.table.name)
-                .filter(CatColumn.name == target_name.name)
-                .one()
-            )
-
-            column_edge = self._get_one_or_create(
-                session,
-                ColumnLineage,
-                source=source,
-                target=target,
-                create_method_kwargs={"payload": payload},
-            )
-
-            session.commit()
-            return column_edge
-
-    def get_database(self, database_name: str) -> CatDatabase:
-        with closing(self.session) as session:
-            return (
-                session.query(CatDatabase)
-                .filter(CatDatabase.name == database_name)
-                .one()
-            )
-
-    def get_schema(self, database_name: str, schema_name: str) -> CatSchema:
-        with closing(self.session) as session:
-            return (
-                session.query(CatSchema)
-                .join(CatSchema.database)
-                .filter(CatDatabase.name == database_name)
-                .filter(CatSchema.name == schema_name)
-                .one()
-            )
-
-    def get_table(
-        self, database_name: str, schema_name: str, table_name: str
-    ) -> CatTable:
-        with closing(self.session) as session:
-            return (
-                session.query(CatTable)
-                .join(CatTable.schema)
-                .join(CatSchema.database)
-                .filter(CatDatabase.name == database_name)
-                .filter(CatSchema.name == schema_name)
-                .filter(CatTable.name == table_name)
-                .one()
-            )
-
-    def get_columns_for_table(
-        self, table: CatTable, column_names: List[str] = []
-    ) -> List[CatColumn]:
-        with closing(self.session) as session:
-            stmt = (
-                session.query(CatColumn)
-                .join(CatColumn.table)
-                .join(CatTable.schema)
-                .join(CatSchema.database)
-                .filter(CatDatabase.name == table.schema.database.name)
-                .filter(CatSchema.name == table.schema.name)
-                .filter(CatTable.name == table.name)
-            )
-
-            if len(column_names) > 0:
-                stmt = stmt.filter(CatColumn.name.in_(column_names))
-            stmt = stmt.order_by(CatColumn.sort_order)
-            return stmt.all()
-
-    def get_column(
-        self, database_name: str, schema_name: str, table_name: str, column_name: str
-    ) -> CatColumn:
-        with closing(self.session) as session:
-            return (
-                session.query(CatColumn)
-                .join(CatColumn.table)
-                .join(CatTable.schema)
-                .join(CatSchema.database)
-                .filter(CatDatabase.name == database_name)
-                .filter(CatSchema.name == schema_name)
-                .filter(CatTable.name == table_name)
-                .filter(CatColumn.name == column_name)
-                .one()
-            )
-
-    def get_column_lineages(self) -> List[ColumnLineage]:
-        with closing(self.session) as session:
-            return session.query(ColumnLineage).all()
-
-    def search_database(self, database_like: str) -> List[CatDatabase]:
-        with closing(self.session) as session:
-            return (
-                session.query(CatDatabase)
-                .filter(CatDatabase.name.like(database_like))
-                .all()
-            )
-
-    def search_schema(
-        self, schema_like: str, database_like: Optional[str] = None
-    ) -> List[CatSchema]:
-        with closing(self.session) as session:
-            stmt = session.query(CatSchema)
-            if database_like is not None:
-                stmt = stmt.join(CatSchema.database).filter(
-                    CatDatabase.name.like(database_like)
-                )
-            stmt = stmt.filter(CatSchema.name.like(schema_like))
-            self.logger.debug(str(stmt))
-            return stmt.all()
-
-    def search_tables(
-        self,
-        table_like: str,
-        schema_like: Optional[str] = None,
-        database_like: Optional[str] = None,
-    ) -> List[CatTable]:
-        with closing(self.session) as session:
-            stmt = session.query(CatTable)
-            if database_like is not None or schema_like is not None:
-                stmt = stmt.join(CatTable.schema)
-            if database_like is not None:
-                stmt = stmt.join(CatSchema.database).filter(
-                    CatDatabase.name.like(database_like)
-                )
-            if schema_like is not None:
-                stmt = stmt.filter(CatSchema.name.like(schema_like))
-
-            stmt = stmt.filter(CatTable.name.like(table_like))
-            self.logger.debug(str(stmt))
-            return stmt.all()
-
-    def search_table(
-        self,
-        table_like: str,
-        schema_like: Optional[str] = None,
-        database_like: Optional[str] = None,
-    ) -> CatTable:
-        tables = self.search_tables(
-            table_like=table_like, schema_like=schema_like, database_like=database_like
-        )
-        if len(tables) == 0:
-            raise RuntimeError("'{}' table not found".format(table_like))
-        elif len(tables) > 1:
-            raise RuntimeError("Ambiguous table name. Multiple matches found")
-
-        return tables[0]
-
-    def search_column(
-        self,
-        column_like: str,
-        table_like: Optional[str] = None,
-        schema_like: Optional[str] = None,
-        database_like: Optional[str] = None,
-    ) -> List[CatColumn]:
-        with closing(self.session) as session:
-            stmt = session.query(CatColumn)
-            if (
-                database_like is not None
-                or schema_like is not None
-                or table_like is not None
-            ):
-                stmt = stmt.join(CatColumn.table)
-            if database_like is not None or schema_like is not None:
-                stmt = stmt.join(CatTable.schema)
-            if database_like is not None:
-                stmt = stmt.join(CatSchema.database).filter(
-                    CatDatabase.name.like(database_like)
-                )
-            if schema_like is not None:
-                stmt = stmt.filter(CatSchema.name.like(schema_like))
-            if table_like is not None:
-                stmt = stmt.filter(CatTable.name.like(table_like))
-
-            stmt = stmt.filter(CatColumn.name.like(column_like))
-            self.logger.debug(str(stmt))
-            print(str(stmt))
-            return stmt.all()
-
-    def save_catalog(self, database: Database) -> None:
-        with closing(self.session) as session:
-            db, db_found = self._get_one_or_create(
-                session, CatDatabase, name=database.name
-            )
-
-            for s in database.schemata:
-                schema, sch_found = self._get_one_or_create(
-                    session, CatSchema, name=s.name, database=db
-                )
-                for t in s.tables:
-                    table, tbl_found = self._get_one_or_create(
-                        session, CatTable, name=t.name, schema=schema
-                    )
-                    index = 0
-                    for c in t.columns:
-                        cc, col_found = self._get_one_or_create(
-                            session=session,
-                            model=CatColumn,
-                            create_method_kwargs={"type": c.type, "sort_order": index},
-                            name=c.name,
-                            table=table,
-                        )
-                        if col_found and cc.type != c.type:
-                            cc.type = c.type
-                        index += 1
-            session.commit()

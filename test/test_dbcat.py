@@ -1,44 +1,37 @@
 from contextlib import closing
-from typing import List
 
-import yaml
+import pytest
 
 from dbcat import pull
-from dbcat.catalog.metadata import Connection
-from dbcat.catalog.orm import Catalog as CatConnection
-
-conf = """
-catalog:
-  type: postgres
-  user: catalog_user
-  password: catal0g_passw0rd
-  host: 127.0.0.1
-  port: 5432
-  database: tokern
-connections:
-  - name: pg
-    type: postgres
-    database: piidb
-    username: piiuser
-    password: p11secret
-    port: 5432
-    uri: 127.0.0.1
-  - name: mys
-    type: mysql
-    database: piidb
-    username: piiuser
-    password: p11secret
-    port: 3306
-    uri: 127.0.0.1
-"""
+from dbcat.catalog.orm import CatSource
 
 
-def test_api(load_all_data, catalog_connection):
-    config = yaml.safe_load(conf)
-    catalog = CatConnection(**config["catalog"])
-    connections: List[Connection] = [
-        Connection(**conn) for conn in config["connections"]
-    ]
+@pytest.fixture(scope="module")
+def setup_catalog_and_data(load_all_data, open_catalog_connection):
+    catalog = open_catalog_connection
+    with catalog:
+        catalog.add_source(
+            name="mysql",
+            type="mysql",
+            uri="127.0.0.1",
+            username="piiuser",
+            password="p11secret",
+            database="piidb",
+        )
+        catalog.add_source(
+            name="pg",
+            type="postgres",
+            uri="127.0.0.1",
+            username="piiuser",
+            password="p11secret",
+            database="piidb",
+            cluster="public",
+        )
+    yield catalog
+    with closing(catalog.session) as session:
+        [session.delete(db) for db in session.query(CatSource).all()]
 
-    with closing(catalog) as catalog:
-        pull(catalog, connections)
+
+def test_api(setup_catalog_and_data):
+    catalog = setup_catalog_and_data
+    pull(catalog)

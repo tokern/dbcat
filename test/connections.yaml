@@ -1,0 +1,30 @@
+connections:
+  - name: pg
+    type: postgres
+    database: db_database
+    username: db_user
+    password: db_password
+    port: db_port
+    uri: db_uri
+  - name: mys
+    type: mysql
+    database: db_database
+    username: db_user
+    password: db_password
+    port: db_port
+    uri: db_uri
+  - name: bq
+    type: bigquery
+    key_path: db_key_path
+    project_credentials:  db_creds
+    project_id: db_project_id
+  - name: gl
+    type: glue
+  - name: sf
+    type: snowflake
+    database: db_database
+    username: db_user
+    password: db_password
+    account: db_account
+    role: db_role
+    warehouse: db_warehouse
