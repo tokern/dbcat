@@ -210,16 +210,17 @@ class Catalog(LogMixin):
                 .one()
             )
 
-    def get_column_lineages(self, job_ids: set) -> List[ColumnLineage]:
-        self.logger.debug(
-            "Search for lineages from [{}]".format(",".join(list(job_ids)))
-        )
+    def get_column_lineages(self, job_ids=None) -> List[ColumnLineage]:
         with closing(self.session) as session:
-            return (
-                session.query(ColumnLineage)
-                .filter(ColumnLineage.job_id.in_(list(job_ids)))
-                .all()
-            )
+            query = session.query(ColumnLineage)
+            if job_ids is not None and len(job_ids) > 0:
+                self.logger.debug(
+                    "Search for lineages from [{}]".format(",".join(list(job_ids)))
+                )
+                query = query.filter(ColumnLineage.job_id.in_(list(job_ids)))
+            else:
+                self.logger.debug("No job ids provided. Return all edges")
+            return query.all()
 
     def search_sources(self, source_like: str) -> List[CatSource]:
         with closing(self.session) as session:
