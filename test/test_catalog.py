@@ -343,7 +343,32 @@ def test_add_sources(open_catalog_connection):
     assert sf_conn.warehouse == "db_warehouse"
 
 
-def test_add_edge(save_catalog):
+def load_edges(catalog, expected_edges, job_id):
+    column_edge_ids = []
+    with catalog:
+        for edge in expected_edges:
+            source = catalog.get_column(
+                database_name=edge[0][0],
+                schema_name=edge[0][1],
+                table_name=edge[0][2],
+                column_name=edge[0][3],
+            )
+
+            target = catalog.get_column(
+                database_name=edge[1][0],
+                schema_name=edge[1][1],
+                table_name=edge[1][2],
+                column_name=edge[1][3],
+            )
+
+            added_edge = catalog.add_column_lineage(source, target, job_id, {})
+
+            column_edge_ids.append(added_edge.id)
+    return column_edge_ids
+
+
+@pytest.fixture(scope="module")
+def load_page_lookup_nonredirect_edges(save_catalog):
     catalog = save_catalog
     expected_edges = [
         (
@@ -368,26 +393,71 @@ def test_add_edge(save_catalog):
         ),
     ]
 
-    with catalog:
-        for edge in expected_edges:
-            source = catalog.get_column(
-                database_name=edge[0][0],
-                schema_name=edge[0][1],
-                table_name=edge[0][2],
-                column_name=edge[0][3],
-            )
+    column_edge_ids = load_edges(
+        catalog, expected_edges, "insert_page_lookup_nonredirect"
+    )
+    yield catalog, expected_edges
 
-            target = catalog.get_column(
-                database_name=edge[1][0],
-                schema_name=edge[1][1],
-                table_name=edge[1][2],
-                column_name=edge[1][3],
-            )
+    with closing(catalog.session) as session:
+        session.query(ColumnLineage).filter(
+            ColumnLineage.id.in_(column_edge_ids)
+        ).delete(synchronize_session=False)
 
-            catalog.add_column_lineage(source, target, "test_add_edge", {})
 
+@pytest.fixture(scope="module")
+def insert_page_lookup_redirect(save_catalog):
+    catalog = save_catalog
+    expected_edges = [
+        (
+            ("test", "default", "page", "page_id"),
+            ("test", "default", "page_lookup_redirect", "page_id"),
+        ),
+        (
+            ("test", "default", "page", "page_latest"),
+            ("test", "default", "page_lookup_redirect", "page_version"),
+        ),
+    ]
+
+    column_edge_ids = load_edges(catalog, expected_edges, "insert_page_lookup_redirect")
+    yield catalog, expected_edges
+
+    with closing(catalog.session) as session:
+        session.query(ColumnLineage).filter(
+            ColumnLineage.id.in_(column_edge_ids)
+        ).delete(synchronize_session=False)
+
+
+def test_add_edge(load_page_lookup_nonredirect_edges):
+    catalog, expected_edges = load_page_lookup_nonredirect_edges
     with closing(catalog.session) as session:
         all_edges = session.query(ColumnLineage).all()
         assert set([(e.source.fqdn, e.target.fqdn) for e in all_edges]) == set(
             expected_edges
         )
+
+
+def test_get_all_edges(load_page_lookup_nonredirect_edges, insert_page_lookup_redirect):
+    catalog, expected_nonredirect = load_page_lookup_nonredirect_edges
+
+    edges = catalog.get_column_lineages()
+    assert len(edges) == 7
+
+
+def test_get_edges_for_job(
+    load_page_lookup_nonredirect_edges, insert_page_lookup_redirect
+):
+    catalog, expected_nonredirect = load_page_lookup_nonredirect_edges
+
+    edges = catalog.get_column_lineages(job_ids=["insert_page_lookup_redirect"])
+    assert len(edges) == 2
+
+
+def test_get_edges_for_many_jobs(
+    load_page_lookup_nonredirect_edges, insert_page_lookup_redirect
+):
+    catalog, expected_nonredirect = load_page_lookup_nonredirect_edges
+
+    edges = catalog.get_column_lineages(
+        job_ids=["insert_page_lookup_redirect", "insert_page_lookup_nonredirect"]
+    )
+    assert len(edges) == 7
