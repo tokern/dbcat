@@ -3,7 +3,7 @@ from contextlib import closing
 import pytest
 
 from dbcat import pull
-from dbcat.catalog.orm import CatSource
+from dbcat.catalog.models import CatSource
 
 
 @pytest.fixture(scope="module")

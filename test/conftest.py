@@ -5,8 +5,8 @@ import pymysql
 import pytest
 import yaml
 
+from dbcat import catalog_connection
 from dbcat.catalog.catalog import Catalog
-from dbcat.dbcat import catalog_connection
 
 postgres_conf = """
 catalog:
