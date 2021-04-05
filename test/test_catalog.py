@@ -4,7 +4,13 @@ import pytest
 import yaml
 
 from dbcat.catalog.catalog import Catalog
-from dbcat.catalog.orm import CatColumn, CatSchema, CatSource, CatTable, ColumnLineage
+from dbcat.catalog.models import (
+    CatColumn,
+    CatSchema,
+    CatSource,
+    CatTable,
+    ColumnLineage,
+)
 
 
 class File:
@@ -378,7 +384,7 @@ def test_add_edge(save_catalog):
                 column_name=edge[1][3],
             )
 
-            catalog.add_column_lineage(source, target, {})
+            catalog.add_column_lineage(source, target, "test_add_edge", {})
 
     with closing(catalog.session) as session:
         all_edges = session.query(ColumnLineage).all()

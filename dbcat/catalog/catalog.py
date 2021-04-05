@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
-from dbcat.catalog.orm import (
+from dbcat.catalog.models import (
     Base,
     CatColumn,
     CatSchema,
@@ -134,13 +134,14 @@ class Catalog(LogMixin):
         return obj
 
     def add_column_lineage(
-        self, source: CatColumn, target: CatColumn, payload: Dict[Any, Any]
+        self, source: CatColumn, target: CatColumn, job_id: str, payload: Dict[Any, Any]
     ) -> ColumnLineage:
         column_edge, created = self._get_one_or_create(
             self._current_session,
             ColumnLineage,
-            source=source,
-            target=target,
+            source_id=source.id,
+            target_id=target.id,
+            job_id=job_id,
             create_method_kwargs={"payload": payload},
         )
 
@@ -209,9 +210,16 @@ class Catalog(LogMixin):
                 .one()
             )
 
-    def get_column_lineages(self) -> List[ColumnLineage]:
+    def get_column_lineages(self, job_ids: set) -> List[ColumnLineage]:
+        self.logger.debug(
+            "Search for lineages from [{}]".format(",".join(list(job_ids)))
+        )
         with closing(self.session) as session:
-            return session.query(ColumnLineage).all()
+            return (
+                session.query(ColumnLineage)
+                .filter(ColumnLineage.job_id.in_(list(job_ids)))
+                .all()
+            )
 
     def search_sources(self, source_like: str) -> List[CatSource]:
         with closing(self.session) as session:

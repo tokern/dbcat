@@ -231,7 +231,7 @@ class CatColumn(Base):
                 self.sort_order,
             ],
             [
-                other.table.schema.database.name,
+                other.table.schema.source.name,
                 other.table.schema.name,
                 other.table.name,
                 other.sort_order,
@@ -256,13 +256,19 @@ class ColumnLineage(Base):
 
     source_id = Column(Integer, ForeignKey("columns.id"))
     target_id = Column(Integer, ForeignKey("columns.id"))
+    job_id = Column(String)
     source = relationship("CatColumn", foreign_keys=source_id, lazy="joined")
     target = relationship("CatColumn", foreign_keys=target_id, lazy="joined")
 
-    def __init__(self, source: CatColumn, target: CatColumn, payload: Dict[Any, Any]):
-        self.source = source
-        self.target = target
+    def __init__(
+        self, source_id: int, target_id: int, job_id: str, payload: Dict[Any, Any]
+    ):
+        self.source_id = source_id
+        self.target_id = target_id
+        self.job_id = job_id
         self.payload = payload
 
     def __repr__(self):
-        return "<Edge: {} -{}-> {}>".format(self.source, self.target, self.payload)
+        return "<Edge: {} -> {} by {}. payload: {}>".format(
+            self.source, self.target, self.job_id, self.payload
+        )

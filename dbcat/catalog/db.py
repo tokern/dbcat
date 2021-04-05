@@ -20,7 +20,7 @@ from databuilder.models.table_metadata import TableMetadata
 from pyhocon import ConfigFactory, ConfigTree
 
 from dbcat.catalog.catalog import Catalog
-from dbcat.catalog.orm import CatSource
+from dbcat.catalog.models import CatSource
 from dbcat.log_mixin import LogMixin
 
 
