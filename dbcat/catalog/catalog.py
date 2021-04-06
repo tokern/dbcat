@@ -1,10 +1,9 @@
 import datetime
-from contextlib import closing, nullcontext
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import create_engine, desc, func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Query, Session, sessionmaker
+from sqlalchemy.orm import Query, Session, scoped_session, sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
 from dbcat.catalog.models import (
@@ -38,8 +37,7 @@ class Catalog(LogMixin):
         self.port: int = int(port) if port is not None else 5432
         self.database: str = database
         self._engine: object = None
-        self._session_factory = None
-        self._current_session = None
+        self._scoped_session = None
 
     @property
     def engine(self) -> object:
@@ -57,48 +55,32 @@ class Catalog(LogMixin):
         return self._engine
 
     @property
-    def session(self) -> Session:
-        if self._session_factory is None:
+    def scoped_session(self) -> scoped_session:
+        if self._scoped_session is None:
             Base.metadata.create_all(self.engine)
-            self._session_factory = sessionmaker(bind=self.engine)
+            self._scoped_session = scoped_session(sessionmaker(bind=self.engine))
 
-        # See https://github.com/python/mypy/issues/4805
-        return self._session_factory()  # type: ignore
+        return self._scoped_session
 
     def close(self):
+        if self._scoped_session is not None:
+            self._scoped_session.remove()
+
         if self._engine is not None:
             self._engine.dispose()
 
-    def __enter__(self):
-        if self._current_session is not None:
-            raise IntegrityError
-        self._current_session = self.session
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._current_session is not None:
-            self._current_session.close()
-            self._current_session = None
-
-    def _get_session_manager(self):
-        if self._current_session is not None:
-            context_manager = nullcontext(self._current_session)
-        else:
-            context_manager = closing(self.session)
-
-        return context_manager
-
-    @staticmethod
     def _get_one_or_create(
-        session, model, create_method="", create_method_kwargs=None, **kwargs
+        self, model, create_method="", create_method_kwargs=None, **kwargs
     ) -> Tuple[Base, bool]:
+        session = self.scoped_session
+
         try:
             return session.query(model).filter_by(**kwargs).one(), False
         except NoResultFound:
             kwargs.update(create_method_kwargs or {})
             try:
-                with session.begin_nested():
-                    created = getattr(model, create_method, model)(**kwargs)
-                    session.add(created)
+                created = getattr(model, create_method, model)(**kwargs)
+                session.add(created)
                 session.commit()
                 return created, True
             except IntegrityError:
@@ -106,21 +88,19 @@ class Catalog(LogMixin):
 
     def add_source(self, name: str, type: str, **kwargs) -> CatSource:
         obj, created = self._get_one_or_create(
-            self._current_session, CatSource, name=name, type=type, **kwargs
+            CatSource, name=name, type=type, **kwargs
         )
         return obj
 
     def add_schema(self, schema_name: str, source: CatSource) -> CatSchema:
         obj, created = self._get_one_or_create(
-            self._current_session, CatSchema, name=schema_name, source=source
+            CatSchema, name=schema_name, source=source
         )
 
         return obj
 
     def add_table(self, table_name: str, schema: CatSchema) -> CatTable:
-        obj, created = self._get_one_or_create(
-            self._current_session, CatTable, name=table_name, schema=schema
-        )
+        obj, created = self._get_one_or_create(CatTable, name=table_name, schema=schema)
 
         return obj
 
@@ -128,7 +108,6 @@ class Catalog(LogMixin):
         self, column_name: str, type: str, sort_order: int, table: CatTable
     ) -> CatColumn:
         obj, created = self._get_one_or_create(
-            session=self._current_session,
             model=CatColumn,
             create_method_kwargs={"type": type, "sort_order": sort_order},
             name=column_name,
@@ -138,9 +117,7 @@ class Catalog(LogMixin):
         return obj
 
     def add_job(self, name: str, context: Dict[Any, Any]) -> Job:
-        obj, created = self._get_one_or_create(
-            session=self._current_session, model=Job, name=name, context=context
-        )
+        obj, created = self._get_one_or_create(model=Job, name=name, context=context)
 
         return obj
 
@@ -152,7 +129,6 @@ class Catalog(LogMixin):
         status: JobExecutionStatus,
     ) -> JobExecution:
         obj, created = self._get_one_or_create(
-            session=self._current_session,
             model=JobExecution,
             job_id=job.id,
             started_at=started_at,
@@ -170,7 +146,6 @@ class Catalog(LogMixin):
         payload: Dict[Any, Any],
     ) -> ColumnLineage:
         column_edge, created = self._get_one_or_create(
-            self._current_session,
             ColumnLineage,
             source_id=source.id,
             target_id=target.id,
@@ -181,88 +156,84 @@ class Catalog(LogMixin):
         return column_edge
 
     def get_source(self, source_name: str) -> CatSource:
-        with closing(self.session) as session:
-            return session.query(CatSource).filter(CatSource.name == source_name).one()
+        return (
+            self.scoped_session.query(CatSource)
+            .filter(CatSource.name == source_name)
+            .one()
+        )
 
     def get_schema(self, source_name: str, schema_name: str) -> CatSchema:
-        with closing(self.session) as session:
-            return (
-                session.query(CatSchema)
-                .join(CatSchema.source)
-                .filter(CatSource.name == source_name)
-                .filter(CatSchema.name == schema_name)
-                .one()
-            )
+        return (
+            self.scoped_session.query(CatSchema)
+            .join(CatSchema.source)
+            .filter(CatSource.name == source_name)
+            .filter(CatSchema.name == schema_name)
+            .one()
+        )
 
     def get_table(
         self, source_name: str, schema_name: str, table_name: str
     ) -> CatTable:
-        with closing(self.session) as session:
-            return (
-                session.query(CatTable)
-                .join(CatTable.schema)
-                .join(CatSchema.source)
-                .filter(CatSource.name == source_name)
-                .filter(CatSchema.name == schema_name)
-                .filter(CatTable.name == table_name)
-                .one()
-            )
+        return (
+            self.scoped_session.query(CatTable)
+            .join(CatTable.schema)
+            .join(CatSchema.source)
+            .filter(CatSource.name == source_name)
+            .filter(CatSchema.name == schema_name)
+            .filter(CatTable.name == table_name)
+            .one()
+        )
 
     def get_columns_for_table(
         self, table: CatTable, column_names: List[str] = []
     ) -> List[CatColumn]:
-        with closing(self.session) as session:
-            stmt = (
-                session.query(CatColumn)
-                .join(CatColumn.table)
-                .join(CatTable.schema)
-                .join(CatSchema.source)
-                .filter(CatSource.name == table.schema.source.name)
-                .filter(CatSchema.name == table.schema.name)
-                .filter(CatTable.name == table.name)
-            )
+        stmt = (
+            self.scoped_session.query(CatColumn)
+            .join(CatColumn.table)
+            .join(CatTable.schema)
+            .join(CatSchema.source)
+            .filter(CatSource.name == table.schema.source.name)
+            .filter(CatSchema.name == table.schema.name)
+            .filter(CatTable.name == table.name)
+        )
 
-            if len(column_names) > 0:
-                stmt = stmt.filter(CatColumn.name.in_(column_names))
-            stmt = stmt.order_by(CatColumn.sort_order)
-            return stmt.all()
+        if len(column_names) > 0:
+            stmt = stmt.filter(CatColumn.name.in_(column_names))
+        stmt = stmt.order_by(CatColumn.sort_order)
+        return stmt.all()
 
     def get_column(
         self, database_name: str, schema_name: str, table_name: str, column_name: str
     ) -> CatColumn:
-        with self._get_session_manager() as session:
-            return (
-                session.query(CatColumn)
-                .join(CatColumn.table)
-                .join(CatTable.schema)
-                .join(CatSchema.source)
-                .filter(CatSource.name == database_name)
-                .filter(CatSchema.name == schema_name)
-                .filter(CatTable.name == table_name)
-                .filter(CatColumn.name == column_name)
-                .one()
-            )
+        return (
+            self.scoped_session.query(CatColumn)
+            .join(CatColumn.table)
+            .join(CatTable.schema)
+            .join(CatSchema.source)
+            .filter(CatSource.name == database_name)
+            .filter(CatSchema.name == schema_name)
+            .filter(CatTable.name == table_name)
+            .filter(CatColumn.name == column_name)
+            .one()
+        )
 
     def get_job(self, name: str) -> Job:
-        with self._get_session_manager() as session:
-            return session.query(Job).filter(Job.name == name).one()
+        return self.scoped_session.query(Job).filter(Job.name == name).one()
 
     def get_job_executions(self, job: Job) -> List[JobExecution]:
-        with self._get_session_manager() as session:
-            return (
-                session.query(JobExecution)
-                .filter(JobExecution.job_id == job.id)
-                .order_by(JobExecution.started_at.asc())
-                .all()
-            )
+        return (
+            self.scoped_session.query(JobExecution)
+            .filter(JobExecution.job_id == job.id)
+            .order_by(JobExecution.started_at.asc())
+            .all()
+        )
 
     def get_job_execution(self, job_execution_id: int) -> JobExecution:
-        with self._get_session_manager() as session:
-            return (
-                session.query(JobExecution)
-                .filter(JobExecution.id == job_execution_id)
-                .one()
-            )
+        return (
+            self.scoped_session.query(JobExecution)
+            .filter(JobExecution.id == job_execution_id)
+            .one()
+        )
 
     @staticmethod
     def _get_latest_job_executions(session: Session, job_ids: List[int]) -> Query:
@@ -285,54 +256,53 @@ class Catalog(LogMixin):
         return query
 
     def get_latest_job_executions(self, job_ids: List[int]) -> List[JobExecution]:
-        with self._get_session_manager() as session:
-            return (
-                self.session.query(JobExecution)
-                .filter(
-                    JobExecution.id.in_(
-                        self._get_latest_job_executions(session, job_ids).subquery()
-                    )
+        return (
+            self.scoped_session.query(JobExecution)
+            .filter(
+                JobExecution.id.in_(
+                    self._get_latest_job_executions(
+                        self.scoped_session(), job_ids
+                    ).subquery()
                 )
-                .all()
             )
+            .all()
+        )
 
     def get_column_lineages(self, job_ids: List[int] = None) -> List[ColumnLineage]:
-        with self._get_session_manager() as session:
-            query = session.query(ColumnLineage)
-            if job_ids is not None and len(job_ids) > 0:
-                self.logger.debug(
-                    "Search for lineages from [{}]".format(
-                        ",".join(str(v) for v in job_ids)
-                    )
+        query = self.scoped_session.query(ColumnLineage)
+        if job_ids is not None and len(job_ids) > 0:
+            self.logger.debug(
+                "Search for lineages from [{}]".format(
+                    ",".join(str(v) for v in job_ids)
                 )
-                query = query.filter(
-                    ColumnLineage.job_execution_id.in_(
-                        self._get_latest_job_executions(session, job_ids).subquery()
-                    )
+            )
+            query = query.filter(
+                ColumnLineage.job_execution_id.in_(
+                    self._get_latest_job_executions(
+                        self.scoped_session(), job_ids
+                    ).subquery()
                 )
-            else:
-                self.logger.debug("No job ids provided. Return all edges")
-            print(query)
-            return query.all()
+            )
+        else:
+            self.logger.debug("No job ids provided. Return all edges")
+        return query.all()
 
     def search_sources(self, source_like: str) -> List[CatSource]:
-        with closing(self.session) as session:
-            return (
-                session.query(CatSource).filter(CatSource.name.like(source_like)).all()
-            )
+        return (
+            self.scoped_session.query(CatSource)
+            .filter(CatSource.name.like(source_like))
+            .all()
+        )
 
     def search_schema(
         self, schema_like: str, source_like: Optional[str] = None
     ) -> List[CatSchema]:
-        with closing(self.session) as session:
-            stmt = session.query(CatSchema)
-            if source_like is not None:
-                stmt = stmt.join(CatSchema.source).filter(
-                    CatSource.name.like(source_like)
-                )
-            stmt = stmt.filter(CatSchema.name.like(schema_like))
-            self.logger.debug(str(stmt))
-            return stmt.all()
+        stmt = self.scoped_session.query(CatSchema)
+        if source_like is not None:
+            stmt = stmt.join(CatSchema.source).filter(CatSource.name.like(source_like))
+        stmt = stmt.filter(CatSchema.name.like(schema_like))
+        self.logger.debug(str(stmt))
+        return stmt.all()
 
     def search_tables(
         self,
@@ -340,20 +310,17 @@ class Catalog(LogMixin):
         schema_like: Optional[str] = None,
         source_like: Optional[str] = None,
     ) -> List[CatTable]:
-        with closing(self.session) as session:
-            stmt = session.query(CatTable)
-            if source_like is not None or schema_like is not None:
-                stmt = stmt.join(CatTable.schema)
-            if source_like is not None:
-                stmt = stmt.join(CatSchema.source).filter(
-                    CatSource.name.like(source_like)
-                )
-            if schema_like is not None:
-                stmt = stmt.filter(CatSchema.name.like(schema_like))
+        stmt = self.scoped_session.query(CatTable)
+        if source_like is not None or schema_like is not None:
+            stmt = stmt.join(CatTable.schema)
+        if source_like is not None:
+            stmt = stmt.join(CatSchema.source).filter(CatSource.name.like(source_like))
+        if schema_like is not None:
+            stmt = stmt.filter(CatSchema.name.like(schema_like))
 
-            stmt = stmt.filter(CatTable.name.like(table_like))
-            self.logger.debug(str(stmt))
-            return stmt.all()
+        stmt = stmt.filter(CatTable.name.like(table_like))
+        self.logger.debug(str(stmt))
+        return stmt.all()
 
     def search_table(
         self,
@@ -378,26 +345,18 @@ class Catalog(LogMixin):
         schema_like: Optional[str] = None,
         source_like: Optional[str] = None,
     ) -> List[CatColumn]:
-        with closing(self.session) as session:
-            stmt = session.query(CatColumn)
-            if (
-                source_like is not None
-                or schema_like is not None
-                or table_like is not None
-            ):
-                stmt = stmt.join(CatColumn.table)
-            if source_like is not None or schema_like is not None:
-                stmt = stmt.join(CatTable.schema)
-            if source_like is not None:
-                stmt = stmt.join(CatSchema.source).filter(
-                    CatSource.name.like(source_like)
-                )
-            if schema_like is not None:
-                stmt = stmt.filter(CatSchema.name.like(schema_like))
-            if table_like is not None:
-                stmt = stmt.filter(CatTable.name.like(table_like))
+        stmt = self.scoped_session.query(CatColumn)
+        if source_like is not None or schema_like is not None or table_like is not None:
+            stmt = stmt.join(CatColumn.table)
+        if source_like is not None or schema_like is not None:
+            stmt = stmt.join(CatTable.schema)
+        if source_like is not None:
+            stmt = stmt.join(CatSchema.source).filter(CatSource.name.like(source_like))
+        if schema_like is not None:
+            stmt = stmt.filter(CatSchema.name.like(schema_like))
+        if table_like is not None:
+            stmt = stmt.filter(CatTable.name.like(table_like))
 
-            stmt = stmt.filter(CatColumn.name.like(column_like))
-            self.logger.debug(str(stmt))
-            print(str(stmt))
-            return stmt.all()
+        stmt = stmt.filter(CatColumn.name.like(column_like))
+        self.logger.debug(str(stmt))
+        return stmt.all()

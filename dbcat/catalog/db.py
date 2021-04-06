@@ -55,32 +55,28 @@ class DbScanner(LogMixin):
             extractor.init(Scoped.get_scoped_conf(self._conf, extractor.get_scope()))
 
             record: TableMetadata = extractor.extract()
-            with self._catalog:
-                current_schema = self._catalog.add_schema(
-                    schema_name=record.schema, source=self._source
-                )
+            current_schema = self._catalog.add_schema(
+                schema_name=record.schema, source=self._source
+            )
 
-                while record:
-                    logging.debug(record)
-                    if record.schema != current_schema.name:
-                        current_schema = self._catalog.add_schema(
-                            schema_name=record.schema, source=self._source
-                        )
-
-                    table = self._catalog.add_table(
-                        table_name=record.name, schema=current_schema
+            while record:
+                logging.debug(record)
+                if record.schema != current_schema.name:
+                    current_schema = self._catalog.add_schema(
+                        schema_name=record.schema, source=self._source
                     )
-                    index = 0
-                    for c in record.columns:
-                        self._catalog.add_column(
-                            column_name=c.name,
-                            type=c.type,
-                            sort_order=index,
-                            table=table,
-                        )
-                        index += 1
 
-                    record = extractor.extract()
+                table = self._catalog.add_table(
+                    table_name=record.name, schema=current_schema
+                )
+                index = 0
+                for c in record.columns:
+                    self._catalog.add_column(
+                        column_name=c.name, type=c.type, sort_order=index, table=table,
+                    )
+                    index += 1
+
+                record = extractor.extract()
 
     @staticmethod
     def _create_sqlalchemy_extractor(
