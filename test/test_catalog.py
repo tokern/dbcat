@@ -1,3 +1,4 @@
+import datetime
 from contextlib import closing
 
 import pytest
@@ -10,6 +11,9 @@ from dbcat.catalog.models import (
     CatSource,
     CatTable,
     ColumnLineage,
+    Job,
+    JobExecution,
+    JobExecutionStatus,
 )
 
 
@@ -343,7 +347,93 @@ def test_add_sources(open_catalog_connection):
     assert sf_conn.warehouse == "db_warehouse"
 
 
-def load_edges(catalog, expected_edges, job_id):
+@pytest.fixture(scope="module")
+def load_job_and_executions(save_catalog):
+    catalog = save_catalog
+    with catalog:
+        job = catalog.add_job(
+            "insert_page_lookup_redirect",
+            {
+                "sql": "insert into page_lookup_redirect(page_id, page_version) select page_idm, page_latest from page"
+            },
+        )
+        e1 = catalog.add_job_execution(
+            job=job,
+            started_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(1, 0)
+            ),
+            ended_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(1, 15)
+            ),
+            status=JobExecutionStatus.SUCCESS,
+        )
+        e2 = catalog.add_job_execution(
+            job=job,
+            started_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(2, 0)
+            ),
+            ended_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(2, 15)
+            ),
+            status=JobExecutionStatus.FAILURE,
+        )
+        e3 = catalog.add_job_execution(
+            job=job,
+            started_at=datetime.datetime.combine(
+                datetime.date(2021, 5, 1), datetime.time(1, 0)
+            ),
+            ended_at=datetime.datetime.combine(
+                datetime.date(2021, 5, 1), datetime.time(1, 15)
+            ),
+            status=JobExecutionStatus.SUCCESS,
+        )
+        name = job.name
+        executions = [e1.id, e2.id, e3.id]
+
+    print("Inserted job {}".format(name))
+    print("Inserted executions {}".format(",".join(str(v) for v in executions)))
+
+    yield catalog, name, executions
+
+    with closing(catalog.session) as session:
+        session.query(JobExecution).filter(JobExecution.id.in_(executions)).delete(
+            synchronize_session=False
+        )
+        print("DELETED executions {}".format(",".join(str(v) for v in executions)))
+        session.commit()
+
+        session.query(Job).filter(Job.name == name).delete(synchronize_session=False)
+        print("DELETED job {}".format(name))
+        session.commit()
+
+
+def test_add_job_executions(load_job_and_executions):
+    catalog, name, executions = load_job_and_executions
+    with catalog:
+        job = catalog.get_job(name)
+        job_executions = catalog.get_job_executions(job)
+
+    assert job.name == "insert_page_lookup_redirect"
+    assert job.context == {
+        "sql": "insert into page_lookup_redirect(page_id, page_version) select page_idm, page_latest from page"
+    }
+    assert len(job_executions) == 3
+
+
+def test_get_latest_job_execution(load_job_and_executions):
+    catalog, name, executions = load_job_and_executions
+    with catalog:
+        job = catalog.get_job(name)
+        latest = catalog.get_latest_job_executions([job.id])
+
+        assert len(latest) == 1
+        latest_execution = latest[0]
+        assert latest_execution.started_at == datetime.datetime.combine(
+            datetime.date(2021, 5, 1), datetime.time(1, 0)
+        )
+
+
+def load_edges(catalog, expected_edges, job_execution_id):
     column_edge_ids = []
     with catalog:
         for edge in expected_edges:
@@ -361,7 +451,9 @@ def load_edges(catalog, expected_edges, job_id):
                 column_name=edge[1][3],
             )
 
-            added_edge = catalog.add_column_lineage(source, target, job_id, {})
+            added_edge = catalog.add_column_lineage(
+                source, target, job_execution_id, {}
+            )
 
             column_edge_ids.append(added_edge.id)
     return column_edge_ids
@@ -370,6 +462,7 @@ def load_edges(catalog, expected_edges, job_id):
 @pytest.fixture(scope="module")
 def load_page_lookup_nonredirect_edges(save_catalog):
     catalog = save_catalog
+
     expected_edges = [
         (
             ("test", "default", "page", "page_id"),
@@ -393,20 +486,54 @@ def load_page_lookup_nonredirect_edges(save_catalog):
         ),
     ]
 
-    column_edge_ids = load_edges(
-        catalog, expected_edges, "insert_page_lookup_nonredirect"
-    )
+    with catalog:
+        job = catalog.add_job(
+            "insert_page_lookup_nonredirect",
+            {"sql": "insert into page_lookup_nonredirect select from page"},
+        )
+        e1 = catalog.add_job_execution(
+            job=job,
+            started_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(1, 0)
+            ),
+            ended_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(1, 15)
+            ),
+            status=JobExecutionStatus.SUCCESS,
+        )
+
+        executions = [e1.id]
+        name = job.name
+
+    print("Inserted job {}".format(name))
+    print("Inserted executions {}".format(",".join(str(v) for v in executions)))
+
+    column_edge_ids = load_edges(catalog, expected_edges, executions[0])
+    print("Inserted edges {}".format(",".join(str(v) for v in column_edge_ids)))
+
     yield catalog, expected_edges
 
     with closing(catalog.session) as session:
         session.query(ColumnLineage).filter(
             ColumnLineage.id.in_(column_edge_ids)
         ).delete(synchronize_session=False)
+        print("DELETED edges {}".format(",".join(str(v) for v in column_edge_ids)))
+        session.commit()
+
+        session.query(JobExecution).filter(JobExecution.id.in_(executions)).delete(
+            synchronize_session=False
+        )
+        print("DELETED executions {}".format(",".join(str(v) for v in executions)))
+        session.commit()
+
+        session.query(Job).filter(Job.name == name).delete(synchronize_session=False)
+        print("DELETED job {}".format(name))
+        session.commit()
 
 
 @pytest.fixture(scope="module")
-def insert_page_lookup_redirect(save_catalog):
-    catalog = save_catalog
+def insert_page_lookup_redirect(load_job_and_executions):
+    catalog, name, executions = load_job_and_executions
     expected_edges = [
         (
             ("test", "default", "page", "page_id"),
@@ -418,17 +545,21 @@ def insert_page_lookup_redirect(save_catalog):
         ),
     ]
 
-    column_edge_ids = load_edges(catalog, expected_edges, "insert_page_lookup_redirect")
+    column_edge_ids = load_edges(catalog, expected_edges, executions[2])
+    print("Inserted edges {}".format(",".join(str(v) for v in column_edge_ids)))
+
     yield catalog, expected_edges
 
     with closing(catalog.session) as session:
         session.query(ColumnLineage).filter(
             ColumnLineage.id.in_(column_edge_ids)
         ).delete(synchronize_session=False)
+        session.commit()
+        print("DELETED edges {}".format(",".join(str(v) for v in column_edge_ids)))
 
 
-def test_add_edge(load_page_lookup_nonredirect_edges):
-    catalog, expected_edges = load_page_lookup_nonredirect_edges
+def test_add_edge(insert_page_lookup_redirect):
+    catalog, expected_edges = insert_page_lookup_redirect
     with closing(catalog.session) as session:
         all_edges = session.query(ColumnLineage).all()
         assert set([(e.source.fqdn, e.target.fqdn) for e in all_edges]) == set(
@@ -448,7 +579,9 @@ def test_get_edges_for_job(
 ):
     catalog, expected_nonredirect = load_page_lookup_nonredirect_edges
 
-    edges = catalog.get_column_lineages(job_ids=["insert_page_lookup_redirect"])
+    with catalog:
+        job = catalog.get_job("insert_page_lookup_redirect")
+        edges = catalog.get_column_lineages(job_ids=[job.id])
     assert len(edges) == 2
 
 
@@ -457,7 +590,9 @@ def test_get_edges_for_many_jobs(
 ):
     catalog, expected_nonredirect = load_page_lookup_nonredirect_edges
 
-    edges = catalog.get_column_lineages(
-        job_ids=["insert_page_lookup_redirect", "insert_page_lookup_nonredirect"]
-    )
-    assert len(edges) == 7
+    with catalog:
+        job_1 = catalog.get_job("insert_page_lookup_redirect")
+        job_2 = catalog.get_job("insert_page_lookup_nonredirect")
+
+        edges = catalog.get_column_lineages(job_ids=[job_1.id, job_2.id])
+        assert len(edges) == 7

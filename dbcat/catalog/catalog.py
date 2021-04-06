@@ -1,9 +1,10 @@
+import datetime
 from contextlib import closing, nullcontext
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, desc, func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Query, Session, sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
 from dbcat.catalog.models import (
@@ -13,6 +14,9 @@ from dbcat.catalog.models import (
     CatSource,
     CatTable,
     ColumnLineage,
+    Job,
+    JobExecution,
+    JobExecutionStatus,
 )
 from dbcat.log_mixin import LogMixin
 
@@ -133,15 +137,44 @@ class Catalog(LogMixin):
 
         return obj
 
+    def add_job(self, name: str, context: Dict[Any, Any]) -> Job:
+        obj, created = self._get_one_or_create(
+            session=self._current_session, model=Job, name=name, context=context
+        )
+
+        return obj
+
+    def add_job_execution(
+        self,
+        job: Job,
+        started_at: datetime.datetime,
+        ended_at: datetime.datetime,
+        status: JobExecutionStatus,
+    ) -> JobExecution:
+        obj, created = self._get_one_or_create(
+            session=self._current_session,
+            model=JobExecution,
+            job_id=job.id,
+            started_at=started_at,
+            ended_at=ended_at,
+            status=status,
+        )
+
+        return obj
+
     def add_column_lineage(
-        self, source: CatColumn, target: CatColumn, job_id: str, payload: Dict[Any, Any]
+        self,
+        source: CatColumn,
+        target: CatColumn,
+        job_execution_id: int,
+        payload: Dict[Any, Any],
     ) -> ColumnLineage:
         column_edge, created = self._get_one_or_create(
             self._current_session,
             ColumnLineage,
             source_id=source.id,
             target_id=target.id,
-            job_id=job_id,
+            job_execution_id=job_execution_id,
             create_method_kwargs={"payload": payload},
         )
 
@@ -210,16 +243,76 @@ class Catalog(LogMixin):
                 .one()
             )
 
-    def get_column_lineages(self, job_ids=None) -> List[ColumnLineage]:
-        with closing(self.session) as session:
+    def get_job(self, name: str) -> Job:
+        with self._get_session_manager() as session:
+            return session.query(Job).filter(Job.name == name).one()
+
+    def get_job_executions(self, job: Job) -> List[JobExecution]:
+        with self._get_session_manager() as session:
+            return (
+                session.query(JobExecution)
+                .filter(JobExecution.job_id == job.id)
+                .order_by(JobExecution.started_at.asc())
+                .all()
+            )
+
+    def get_job_execution(self, job_execution_id: int) -> JobExecution:
+        with self._get_session_manager() as session:
+            return (
+                session.query(JobExecution)
+                .filter(JobExecution.id == job_execution_id)
+                .one()
+            )
+
+    @staticmethod
+    def _get_latest_job_executions(session: Session, job_ids: List[int]) -> Query:
+        row_number_column = (
+            func.row_number()
+            .over(
+                partition_by=JobExecution.job_id, order_by=desc(JobExecution.started_at)
+            )
+            .label("row_number")
+        )
+        query = (
+            session.query(JobExecution.id)
+            .filter(JobExecution.job_id.in_(job_ids))
+            .add_column(row_number_column)
+            .from_self()
+            .filter(row_number_column == 1)
+        )
+        query = query.from_self(JobExecution.id)
+        print(query)
+        return query
+
+    def get_latest_job_executions(self, job_ids: List[int]) -> List[JobExecution]:
+        with self._get_session_manager() as session:
+            return (
+                self.session.query(JobExecution)
+                .filter(
+                    JobExecution.id.in_(
+                        self._get_latest_job_executions(session, job_ids).subquery()
+                    )
+                )
+                .all()
+            )
+
+    def get_column_lineages(self, job_ids: List[int] = None) -> List[ColumnLineage]:
+        with self._get_session_manager() as session:
             query = session.query(ColumnLineage)
             if job_ids is not None and len(job_ids) > 0:
                 self.logger.debug(
-                    "Search for lineages from [{}]".format(",".join(list(job_ids)))
+                    "Search for lineages from [{}]".format(
+                        ",".join(str(v) for v in job_ids)
+                    )
                 )
-                query = query.filter(ColumnLineage.job_id.in_(list(job_ids)))
+                query = query.filter(
+                    ColumnLineage.job_execution_id.in_(
+                        self._get_latest_job_executions(session, job_ids).subquery()
+                    )
+                )
             else:
                 self.logger.debug("No job ids provided. Return all edges")
+            print(query)
             return query.all()
 
     def search_sources(self, source_like: str) -> List[CatSource]:

@@ -1,7 +1,9 @@
+import datetime
+import enum
 from typing import Any, Dict, Optional
 
 from snowflake.sqlalchemy import URL
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import TIMESTAMP, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm import relationship
@@ -248,27 +250,85 @@ class CatColumn(Base):
         return hash(self.fqdn)
 
 
+class Job(Base):
+    __tablename__ = "jobs"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True)
+    context = Column(JSONB)
+
+    def __init__(self, name: str, context: Dict[Any, Any] = None):
+        self.name = name
+        self.context = context
+
+    def __repr__(self):
+        return "<Job {}, {}".format(self.name, self.context)
+
+
+class JobExecutionStatus(enum.Enum):
+    SUCCESS = 1
+    FAILURE = 2
+
+
+class JobExecution(Base):
+    __tablename__ = "job_executions"
+
+    id = Column(Integer, primary_key=True)
+
+    job_id = Column(Integer, ForeignKey("jobs.id"))
+    job = relationship("Job", foreign_keys=job_id, lazy="joined")
+
+    started_at = Column(TIMESTAMP)
+    ended_at = Column(TIMESTAMP)
+    status = Column(Enum(JobExecutionStatus))
+
+    def __init__(
+        self,
+        job_id: int,
+        started_at: datetime.datetime,
+        ended_at: datetime.datetime,
+        status: JobExecutionStatus,
+    ):
+        self.job_id = job_id
+        self.started_at = started_at
+        self.ended_at = ended_at
+        self.status = status
+
+    def __repr__(self):
+        return "<Job Execution ({}), {}, {}, {}>".format(
+            self.job, self.started_at, self.ended_at, self.status
+        )
+
+
 class ColumnLineage(Base):
     __tablename__ = "column_lineage"
 
     id = Column(Integer, primary_key=True)
-    payload = Column(JSONB)
+    context = Column(JSONB)
 
     source_id = Column(Integer, ForeignKey("columns.id"))
     target_id = Column(Integer, ForeignKey("columns.id"))
-    job_id = Column(String)
+    job_execution_id = Column(Integer, ForeignKey("job_executions.id"))
+
     source = relationship("CatColumn", foreign_keys=source_id, lazy="joined")
     target = relationship("CatColumn", foreign_keys=target_id, lazy="joined")
+    job_execution = relationship(
+        "JobExecution", foreign_keys=job_execution_id, lazy="joined"
+    )
 
     def __init__(
-        self, source_id: int, target_id: int, job_id: str, payload: Dict[Any, Any]
+        self,
+        source_id: int,
+        target_id: int,
+        job_execution_id: str,
+        payload: Dict[Any, Any],
     ):
         self.source_id = source_id
         self.target_id = target_id
-        self.job_id = job_id
-        self.payload = payload
+        self.job_execution_id = job_execution_id
+        self.context = payload
 
     def __repr__(self):
         return "<Edge: {} -> {} by {}. payload: {}>".format(
-            self.source, self.target, self.job_id, self.payload
+            self.source, self.target, self.job_execution, self.context
         )
