@@ -7,9 +7,8 @@ def pull(catalog: Catalog) -> None:
     logger = LogMixin()
 
     scanners = []
-    with catalog:
-        for source in catalog.search_sources("%"):
-            scanners.append(DbScanner(catalog, source))
+    for source in catalog.search_sources("%"):
+        scanners.append(DbScanner(catalog, source))
 
     for scanner in scanners:
         logger.logger.debug("Scanning {}".format(scanner.name))
