@@ -235,6 +235,27 @@ class Catalog(LogMixin):
             .one()
         )
 
+    def get_source_by_id(self, source_id: int) -> CatSource:
+        return (
+            self.scoped_session.query(CatSource).filter(CatSource.id == source_id).one()
+        )
+
+    def get_schema_by_id(self, schema_id: int) -> CatSchema:
+        return (
+            self.scoped_session.query(CatSchema).filter(CatSchema.id == schema_id).one()
+        )
+
+    def get_table_by_id(self, table_id: int) -> CatTable:
+        return self.scoped_session.query(CatTable).filter(CatTable.id == table_id).one()
+
+    def get_column_by_id(self, column_id: int) -> CatColumn:
+        return (
+            self.scoped_session.query(CatColumn).filter(CatColumn.id == column_id).one()
+        )
+
+    def get_job_by_id(self, job_id: int) -> Job:
+        return self.scoped_session.query(Job).filter(Job.id == job_id).one()
+
     @staticmethod
     def _get_latest_job_executions(session: Session, job_ids: List[int]) -> Query:
         row_number_column = (
