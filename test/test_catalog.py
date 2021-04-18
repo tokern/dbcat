@@ -162,10 +162,19 @@ def test_update_catalog(save_catalog):
     assert group_col.type == "BIGINT"
 
 
-def test_get_database(save_catalog):
+def test_get_source(save_catalog):
     catalog = save_catalog
-    database = catalog.get_source("test")
-    assert database.fqdn == "test"
+    source = catalog.get_source("test")
+    assert source.fqdn == "test"
+
+
+def test_get_source_by_id(save_catalog):
+    catalog = save_catalog
+    source = catalog.get_source("test")
+
+    source_by_id = catalog.get_source_by_id(source.id)
+
+    assert source_by_id.fqdn == "test"
 
 
 def test_get_schema(save_catalog):
@@ -174,10 +183,27 @@ def test_get_schema(save_catalog):
     assert schema.fqdn == ("test", "default")
 
 
+def test_get_schema_by_id(save_catalog):
+    catalog = save_catalog
+    schema = catalog.get_schema("test", "default")
+
+    schema_by_id = catalog.get_schema_by_id(schema.id)
+    assert schema_by_id.fqdn == ("test", "default")
+
+
 def test_get_table(save_catalog):
     catalog = save_catalog
     table = catalog.get_table("test", "default", "page")
     assert table.fqdn == ("test", "default", "page")
+
+
+def test_get_table_by_id(save_catalog):
+    catalog = save_catalog
+    table = catalog.get_table("test", "default", "page")
+
+    table_by_id = catalog.get_table_by_id(table.id)
+
+    assert table_by_id.fqdn == ("test", "default", "page")
 
 
 def test_get_table_columns(save_catalog):
@@ -203,6 +229,14 @@ def test_get_column(save_catalog):
     catalog = save_catalog
     column = catalog.get_column("test", "default", "page", "page_title")
     assert column.fqdn == ("test", "default", "page", "page_title")
+
+
+def test_get_column_by_id(save_catalog):
+    catalog = save_catalog
+    column = catalog.get_column("test", "default", "page", "page_title")
+
+    column_by_id = catalog.get_column_by_id(column.id)
+    assert column_by_id.fqdn == ("test", "default", "page", "page_title")
 
 
 def test_search_source(save_catalog):
@@ -389,6 +423,14 @@ def load_job_and_executions(save_catalog):
     session.query(Job).filter(Job.name == name).delete(synchronize_session=False)
     print("DELETED job {}".format(name))
     session.commit()
+
+
+def test_get_job_id(load_job_and_executions):
+    catalog, name, executions = load_job_and_executions
+    job = catalog.get_job(name)
+
+    job_by_id = catalog.get_job_by_id(job.id)
+    assert job_by_id.name == "insert_page_lookup_redirect"
 
 
 def test_add_job_executions(load_job_and_executions):
