@@ -43,7 +43,6 @@ jobs:
           MYSQL_PASSWORD: p11secret
           MYSQL_DATABASE: piidb
           MYSQL_ROOT_PASSWORD: r00tPa33w0rd
-    working_directory: ~/repo
 
     steps:
       - checkout
@@ -62,7 +61,6 @@ jobs:
 
       - python/install-packages:
           pkg-manager: poetry
-          app-dir: ~/repo
 
       # run tests!
       - run:
@@ -94,7 +92,6 @@ jobs:
       - checkout
       - python/install-packages:
           pkg-manager: poetry
-          app-dir: ~/repo
 
       - run:
           name: verify git tag vs. version
