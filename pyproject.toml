@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "dbcat"
+version = "0.6.0"
+description = "Tokern Data Catalog"
+authors = ["Tokern"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+click = "*"
+PyYAML = "*"
+Jinja2 = "*"
+amundsen-databuilder = "*"
+psycopg2-binary = "*"
+SQLAlchemy = "*"
+google-api-python-client = "*"
+boto3 = ">=1.17.79"
+pymysql = "*"
+cryptography = ">=3.3.2"
+snowflake-sqlalchemy = ">=1.2.4"
+snowflake-connector-python = ">=2.3.10"
+sqlalchemy = "*"
+pandas = "^1.2.4"
+
+[tool.poetry.dev-dependencies]
+black = "==19.10b0"
+flake8 = "*"
+isort = "*"
+mypy = "*"
+pre-commit = "*"
+pytest = "*"
+pytest-cov = "*"
+pipenv-setup = "*"
+twine = "*"
+wheel = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -5,6 +5,7 @@
 version: 2.1
 orbs:
   codecov: codecov/codecov@1.0.5
+  python: circleci/python@1.4.0
 workflows:
   build_and_deploy:
     jobs:
@@ -59,33 +60,17 @@ jobs:
             dockerize -wait tcp://localhost:5432 -timeout 1m
             dockerize -wait tcp://localhost:3306 -timeout 1m
 
-      # Download and cache dependencies
-      - restore_cache:
-          key: deps-{{ checksum "Pipfile.lock" }}-{{ .Environment.PYVERSION }}
-
-      - run: &install-deps
-          name: install dependencies
-          command: |
-            sudo pip install pipenv
-            pipenv sync --dev
-
-      - save_cache:
-          key: deps-{{ checksum "Pipfile.lock" }}-{{ .Environment.PYVERSION }}
-          paths:
-            - ".venv"
-
-      - run:
-          name: install dbcat
-          command: pipenv run python setup.py develop
+      - python/install-packages:
+          pkg-manager: poetry
 
       # run tests!
       - run:
           name: run tests
           command: |
-            pipenv run isort --check --diff .
-            pipenv run black --check .
-            pipenv run flake8 dbcat test
-            pipenv run pytest --junitxml=junit/test-results.xml --cov=dbcat --cov-report=xml --cov-report=html test/
+            poetry run isort --check --diff .
+            poetry run black --check .
+            poetry run flake8 dbcat test
+            poetry run pytest --junitxml=junit/test-results.xml --cov=dbcat --cov-report=xml --cov-report=html test/
 
       - store_test_results: # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: test-results
@@ -106,39 +91,18 @@ jobs:
           PYVERSION: "3.8.3"
     steps:
       - checkout
-      - restore_cache:
-          key: deps-{{ checksum "Pipfile.lock" }}-{{ .Environment.PYVERSION }}
-      - run:
-          name: install dependencies
-          command: |
-            sudo pip install pipenv
-            pipenv sync --dev
-
-      - save_cache:
-          key: deps-{{ checksum "Pipfile.lock" }}-{{ .Environment.PYVERSION }}
-          paths:
-            - ".venv"
+      - python/install-packages:
+          pkg-manager: poetry
 
       - run:
           name: verify git tag vs. version
           command: |
-            pipenv run python setup.py verify
+            poetry run python setup.py verify
 
-      - run:
-          name: init .pypirc
-          command: |
-            echo -e "[pypi]" >> ~/.pypirc
-            echo -e "username = $PYPI_USERNAME" >> ~/.pypirc
-            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
       - run:
           name: create packages
           command: |
-            pipenv run python setup.py sdist bdist_wheel
-
-      - run:
-          name: upload to pypi
-          command: |
-            pipenv run twine upload dist/*
+            poetry publish --username "${PYPI_USERNAME}" --password "${PYPI_PASSWORD}"
 
       - run:
           name: install git release utilities

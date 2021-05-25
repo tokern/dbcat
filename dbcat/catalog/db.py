@@ -37,7 +37,7 @@ class DbScanner(LogMixin):
             self._extractor, self._conf = DbScanner._create_glue_extractor(source)
         elif source.type == "mysql":
             self._extractor, self._conf = DbScanner._create_mysql_extractor(source)
-        elif source.type == "postgres":
+        elif source.type == "postgresql":
             self._extractor, self._conf = DbScanner._create_postgres_extractor(source)
         elif source.type == "redshift":
             self._extractor, self._conf = DbScanner._create_redshift_extractor(source)
