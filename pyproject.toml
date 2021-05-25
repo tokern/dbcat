@@ -30,9 +30,6 @@ mypy = "*"
 pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
-pipenv-setup = "*"
-twine = "*"
-wheel = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
