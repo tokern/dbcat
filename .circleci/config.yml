@@ -62,6 +62,7 @@ jobs:
 
       - python/install-packages:
           pkg-manager: poetry
+          app-dir: ~/repo
 
       # run tests!
       - run:
@@ -93,6 +94,7 @@ jobs:
       - checkout
       - python/install-packages:
           pkg-manager: poetry
+          app-dir: ~/repo
 
       - run:
           name: verify git tag vs. version
