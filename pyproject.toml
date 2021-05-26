@@ -4,23 +4,28 @@ version = "0.6.0"
 description = "Tokern Data Catalog"
 authors = ["Tokern"]
 license = "MIT"
+classifiers = [
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Topic :: Database",
+        "Topic :: Software Development",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+    ]
+keywords=["data-catalog","databases","postgres","snowflake","redshift","glue"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
 click = "*"
 PyYAML = "*"
-Jinja2 = "*"
-amundsen-databuilder = "*"
 psycopg2-binary = "*"
-SQLAlchemy = "*"
-google-api-python-client = "*"
-boto3 = ">=1.17.79"
-pymysql = "*"
-cryptography = ">=3.3.2"
-snowflake-sqlalchemy = ">=1.2.4"
-snowflake-connector-python = ">=2.3.10"
-sqlalchemy = "*"
-pandas = "^1.2.4"
+SQLAlchemy = ">=1.3.6,<1.4"
+boto3 = "1.10.1"
+cryptography = "^3.3.2"
+amundsen-databuilder = {extras = ["athena", "bigquery", "glue", "rds", "snowflake"], version = "^4.4.1"}
 
 [tool.poetry.dev-dependencies]
 black = "==19.10b0"
@@ -30,6 +35,7 @@ mypy = "*"
 pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
+PyMySQL = "^1.0.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
