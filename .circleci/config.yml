@@ -61,6 +61,7 @@ jobs:
 
       - python/install-packages:
           pkg-manager: poetry
+          include-python-in-cache-key: false
 
       # run tests!
       - run:
@@ -92,6 +93,7 @@ jobs:
       - checkout
       - python/install-packages:
           pkg-manager: poetry
+          include-python-in-cache-key: false
 
       - run:
           name: verify git tag vs. version
