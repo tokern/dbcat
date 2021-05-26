@@ -2,7 +2,7 @@
 name = "dbcat"
 version = "0.6.0"
 description = "Tokern Data Catalog"
-authors = ["Tokern"]
+authors = ["Tokern <info@tokern.io>"]
 license = "MIT"
 classifiers = [
         "Development Status :: 3 - Alpha",
@@ -14,8 +14,12 @@ classifiers = [
         "Topic :: Database",
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries :: Python Modules",
-    ]
-keywords=["data-catalog","databases","postgres","snowflake","redshift","glue"]
+]
+keywords=["data-catalog","postgres","snowflake","redshift","glue"]
+readme="README.md"
+homepage="https://tokern.io/"
+repository="https://github.com/tokern/dbcat/"
+
 
 [tool.poetry.dependencies]
 python = "^3.8"

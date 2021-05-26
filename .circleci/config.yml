@@ -98,11 +98,6 @@ jobs:
           include-branch-in-cache-key: false
 
       - run:
-          name: verify git tag vs. version
-          command: |
-            poetry run python setup.py verify
-
-      - run:
           name: create packages
           command: |
             poetry publish --username "${PYPI_USERNAME}" --password "${PYPI_PASSWORD}"
