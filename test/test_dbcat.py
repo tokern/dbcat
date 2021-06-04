@@ -9,7 +9,7 @@ def setup_catalog_and_data(load_all_data, open_catalog_connection):
     catalog = open_catalog_connection
     catalog.add_source(
         name="mysql",
-        type="mysql",
+        source_type="mysql",
         uri="127.0.0.1",
         username="piiuser",
         password="p11secret",
@@ -17,7 +17,7 @@ def setup_catalog_and_data(load_all_data, open_catalog_connection):
     )
     catalog.add_source(
         name="pg",
-        type="postgresql",
+        source_type="postgresql",
         uri="127.0.0.1",
         username="piiuser",
         password="p11secret",

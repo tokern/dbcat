@@ -15,7 +15,7 @@ class CatSource(Base):
     __tablename__ = "sources"
 
     id = Column(Integer, primary_key=True)
-    type = Column(String)
+    source_type = Column(String)
     name = Column(String)
     dialect = Column(String)
     uri = Column(String)
@@ -38,7 +38,7 @@ class CatSource(Base):
 
     def __init__(
         self,
-        type: str,
+        source_type: str,
         name: str,
         dialect: Optional[str] = None,
         uri: Optional[str] = None,
@@ -61,9 +61,9 @@ class CatSource(Base):
     ):
         self.uri = uri
         self.port = port
-        if type is not None:
-            type = type.lower()
-        self.type = type
+        if source_type is not None:
+            source_type = source_type.lower()
+        self.source_type = source_type
         self.dialect = dialect
         self.username = username
         self.password = password
@@ -83,10 +83,10 @@ class CatSource(Base):
 
     @property
     def conn_string(self):
-        if self.type == "bigquery":
+        if self.source_type == "bigquery":
             project_id = self.project_id
             conn_string = f"bigquery://{project_id}"
-        elif self.type == "snowflake":
+        elif self.source_type == "snowflake":
             conn_string = URL(
                 account=self.account,
                 user=self.username,
@@ -100,12 +100,12 @@ class CatSource(Base):
                 f"{self.username}:{self.password}" if self.password is not None else ""
             )
 
-            if self.type in ["redshift"]:
+            if self.source_type in ["redshift"]:
                 self.dialect = "postgres"
-            elif self.type == "mysql":
+            elif self.source_type == "mysql":
                 self.dialect = "mysql+pymysql"
             else:
-                self.dialect = self.type
+                self.dialect = self.source_type
             uri_port_placeholder = (
                 f"{self.uri}:{self.port}" if self.port is not None else f"{self.uri}"
             )

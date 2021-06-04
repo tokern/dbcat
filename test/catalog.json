@@ -1,6 +1,6 @@
 {
   "name": "test",
-  "type": "json",
+  "source_type": "json",
   "schemata": [
     {
       "name": "default",

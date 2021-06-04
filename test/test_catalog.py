@@ -32,7 +32,9 @@ class File:
         with open(self.path, "r") as file:
             content = json.load(file)
 
-        source = self._catalog.add_source(name=content["name"], type=content["type"])
+        source = self._catalog.add_source(
+            name=content["name"], source_type=content["source_type"]
+        )
         for s in content["schemata"]:
             schema = self._catalog.add_schema(s["name"], source=source)
 
@@ -324,7 +326,7 @@ def test_add_sources(open_catalog_connection):
     # pg
     pg_connection = connections[1]
     assert pg_connection.name == "pg"
-    assert pg_connection.type == "postgres"
+    assert pg_connection.source_type == "postgres"
     assert pg_connection.database == "db_database"
     assert pg_connection.username == "db_user"
     assert pg_connection.password == "db_password"
@@ -334,7 +336,7 @@ def test_add_sources(open_catalog_connection):
     # mysql
     mysql_conn = connections[2]
     assert mysql_conn.name == "mys"
-    assert mysql_conn.type == "mysql"
+    assert mysql_conn.source_type == "mysql"
     assert mysql_conn.database == "db_database"
     assert mysql_conn.username == "db_user"
     assert mysql_conn.password == "db_password"
@@ -344,7 +346,7 @@ def test_add_sources(open_catalog_connection):
     # bigquery
     bq_conn = connections[3]
     assert bq_conn.name == "bq"
-    assert bq_conn.type == "bigquery"
+    assert bq_conn.source_type == "bigquery"
     assert bq_conn.key_path == "db_key_path"
     assert bq_conn.project_credentials == "db_creds"
     assert bq_conn.project_id == "db_project_id"
@@ -352,12 +354,12 @@ def test_add_sources(open_catalog_connection):
     # glue
     glue_conn = connections[4]
     assert glue_conn.name == "gl"
-    assert glue_conn.type == "glue"
+    assert glue_conn.source_type == "glue"
 
     # snowflake
     sf_conn = connections[5]
     assert sf_conn.name == "sf"
-    assert sf_conn.type == "snowflake"
+    assert sf_conn.source_type == "snowflake"
     assert sf_conn.database == "db_database"
     assert sf_conn.username == "db_user"
     assert sf_conn.password == "db_password"
