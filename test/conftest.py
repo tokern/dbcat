@@ -10,7 +10,6 @@ from dbcat.catalog.catalog import Catalog
 
 postgres_conf = """
 catalog:
-  type: postgresql
   user: piiuser
   password: p11secret
   host: 127.0.0.1
@@ -51,7 +50,6 @@ def setup_catalog(root_connection):
 
 catalog_conf = """
 catalog:
-  type: postgresql
   user: catalog_user
   password: catal0g_passw0rd
   host: 127.0.0.1
