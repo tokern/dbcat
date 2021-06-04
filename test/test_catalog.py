@@ -66,7 +66,6 @@ def save_catalog(open_catalog_connection):
 
 def test_catalog_config(root_connection):
     conn: Catalog = root_connection
-    assert conn.type == "postgresql"
     assert conn.user == "piiuser"
     assert conn.password == "p11secret"
     assert conn.host == "127.0.0.1"

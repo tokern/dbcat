@@ -22,15 +22,8 @@ from dbcat.log_mixin import LogMixin
 
 class Catalog(LogMixin):
     def __init__(
-        self,
-        type: str,
-        user: str,
-        password: str,
-        database: str,
-        host: str,
-        port: str = None,
+        self, user: str, password: str, database: str, host: str, port: str = None,
     ):
-        self.type: str = type
         self.user: str = user
         self.password: str = password
         self.host: str = host
@@ -43,8 +36,7 @@ class Catalog(LogMixin):
     def engine(self) -> object:
         if self._engine is None:
             self._engine = create_engine(
-                "{type}://{user}:{password}@{host}:{port}/{database}".format(
-                    type=self.type,
+                "postgresql://{user}:{password}@{host}:{port}/{database}".format(
                     user=self.user,
                     password=self.password,
                     host=self.host,
