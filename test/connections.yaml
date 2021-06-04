@@ -1,27 +1,27 @@
 connections:
   - name: pg
-    type: postgres
+    source_type: postgres
     database: db_database
     username: db_user
     password: db_password
     port: db_port
     uri: db_uri
   - name: mys
-    type: mysql
+    source_type: mysql
     database: db_database
     username: db_user
     password: db_password
     port: db_port
     uri: db_uri
   - name: bq
-    type: bigquery
+    source_type: bigquery
     key_path: db_key_path
     project_credentials:  db_creds
     project_id: db_project_id
   - name: gl
-    type: glue
+    source_type: glue
   - name: sf
-    type: snowflake
+    source_type: snowflake
     database: db_database
     username: db_user
     password: db_password

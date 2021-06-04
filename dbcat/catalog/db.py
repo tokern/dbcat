@@ -31,20 +31,20 @@ class DbScanner(LogMixin):
         self._conf: ConfigTree = None
         self._catalog = catalog
         self._source = source
-        if source.type == "bigquery":
+        if source.source_type == "bigquery":
             self._extractor, self._conf = DbScanner._create_big_query_extractor(source)
-        elif source.type == "glue":
+        elif source.source_type == "glue":
             self._extractor, self._conf = DbScanner._create_glue_extractor(source)
-        elif source.type == "mysql":
+        elif source.source_type == "mysql":
             self._extractor, self._conf = DbScanner._create_mysql_extractor(source)
-        elif source.type == "postgresql":
+        elif source.source_type == "postgresql":
             self._extractor, self._conf = DbScanner._create_postgres_extractor(source)
-        elif source.type == "redshift":
+        elif source.source_type == "redshift":
             self._extractor, self._conf = DbScanner._create_redshift_extractor(source)
-        elif source.type == "snowflake":
+        elif source.source_type == "snowflake":
             self._extractor, self._conf = DbScanner._create_snowflake_extractors(source)
         else:
-            raise ValueError("{} is not supported".format(source.type))
+            raise ValueError("{} is not supported".format(source.source_type))
 
     @property
     def name(self):

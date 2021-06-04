@@ -86,9 +86,9 @@ class Catalog(LogMixin):
             except IntegrityError:
                 return session.query(model).filter_by(**kwargs).one(), False
 
-    def add_source(self, name: str, type: str, **kwargs) -> CatSource:
+    def add_source(self, name: str, source_type: str, **kwargs) -> CatSource:
         obj, created = self._get_one_or_create(
-            CatSource, name=name, type=type, **kwargs
+            CatSource, name=name, source_type=source_type, **kwargs
         )
         return obj
 
