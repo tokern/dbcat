@@ -193,14 +193,14 @@ class CatColumn(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    type = Column(String)
+    data_type = Column(String)
     sort_order = Column(Integer)
     table_id = Column(Integer, ForeignKey("tables.id"))
     table = relationship("CatTable", back_populates="columns", lazy="joined")
 
-    def __init__(self, name: str, type: str, sort_order: int, table: CatTable):
+    def __init__(self, name: str, data_type: str, sort_order: int, table: CatTable):
         self.name = name
-        self.type = type
+        self.data_type = data_type
         self.sort_order = sort_order
         self.table = table
 
