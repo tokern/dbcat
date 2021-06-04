@@ -43,9 +43,10 @@ class File:
 
                 index = 0
                 for c in t["columns"]:
+                    print(c)
                     self._catalog.add_column(
                         column_name=c["name"],
-                        type=c["type"],
+                        data_type=c["data_type"],
                         sort_order=index,
                         table=table,
                     )
@@ -113,27 +114,27 @@ def test_read_catalog(save_catalog):
 
     page_id_column = table.columns[0]
     assert page_id_column.name == "page_id"
-    assert page_id_column.type == "BIGINT"
+    assert page_id_column.data_type == "BIGINT"
     assert page_id_column.sort_order == 0
 
     page_title_column = table.columns[1]
     assert page_title_column.name == "page_title"
-    assert page_title_column.type == "STRING"
+    assert page_title_column.data_type == "STRING"
     assert page_title_column.sort_order == 1
 
     page_url_column = table.columns[2]
     assert page_url_column.name == "page_url"
-    assert page_url_column.type == "STRING"
+    assert page_url_column.data_type == "STRING"
     assert page_url_column.sort_order == 2
 
     views_column = table.columns[3]
     assert views_column.name == "views"
-    assert views_column.type == "BIGINT"
+    assert views_column.data_type == "BIGINT"
     assert views_column.sort_order == 3
 
     bytes_sent_column = table.columns[4]
     assert bytes_sent_column.name == "bytes_sent"
-    assert bytes_sent_column.type == "BIGINT"
+    assert bytes_sent_column.data_type == "BIGINT"
     assert bytes_sent_column.sort_order == 4
 
 
@@ -149,7 +150,7 @@ def test_update_catalog(save_catalog):
         .one()
     )
 
-    assert group_col.type == "STRING"
+    assert group_col.data_type == "STRING"
 
     catalog.schemata[0].tables[0].columns[0]._type = "BIGINT"
     catalog.save_catalog(catalog)
@@ -161,7 +162,7 @@ def test_update_catalog(save_catalog):
         .one()
     )
 
-    assert group_col.type == "BIGINT"
+    assert group_col.data_type == "BIGINT"
 
 
 def test_get_source(save_catalog):

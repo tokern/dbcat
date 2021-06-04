@@ -72,7 +72,10 @@ class DbScanner(LogMixin):
                 index = 0
                 for c in record.columns:
                     self._catalog.add_column(
-                        column_name=c.name, type=c.type, sort_order=index, table=table,
+                        column_name=c.name,
+                        data_type=c.type,
+                        sort_order=index,
+                        table=table,
                     )
                     index += 1
 

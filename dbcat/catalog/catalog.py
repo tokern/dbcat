@@ -105,11 +105,11 @@ class Catalog(LogMixin):
         return obj
 
     def add_column(
-        self, column_name: str, type: str, sort_order: int, table: CatTable
+        self, column_name: str, data_type: str, sort_order: int, table: CatTable
     ) -> CatColumn:
         obj, created = self._get_one_or_create(
             model=CatColumn,
-            create_method_kwargs={"type": type, "sort_order": sort_order},
+            create_method_kwargs={"data_type": data_type, "sort_order": sort_order},
             name=column_name,
             table=table,
         )
