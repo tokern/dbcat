@@ -135,14 +135,14 @@ class Catalog(LogMixin):
         source: CatColumn,
         target: CatColumn,
         job_execution_id: int,
-        payload: Dict[Any, Any],
+        context: Dict[Any, Any],
     ) -> ColumnLineage:
         column_edge, created = self._get_one_or_create(
             ColumnLineage,
             source_id=source.id,
             target_id=target.id,
             job_execution_id=job_execution_id,
-            create_method_kwargs={"payload": payload},
+            create_method_kwargs={"context": context},
         )
 
         return column_edge

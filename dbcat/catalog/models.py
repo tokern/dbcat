@@ -1,6 +1,5 @@
-import datetime
 import enum
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from snowflake.sqlalchemy import URL
 from sqlalchemy import TIMESTAMP, Column, Enum, ForeignKey, Integer, String
@@ -139,10 +138,6 @@ class CatSchema(Base):
     source = relationship("CatSource", back_populates="schemata", lazy="joined")
     tables = relationship("CatTable", back_populates="schema")
 
-    def __init__(self, name: str, source: CatSource):
-        self.name = name
-        self.source = source
-
     @property
     def fqdn(self):
         return self.source.name, self.name
@@ -167,10 +162,6 @@ class CatTable(Base):
     columns = relationship(
         "CatColumn", back_populates="table", order_by="CatColumn.sort_order"
     )
-
-    def __init__(self, name: str, schema: CatSchema):
-        self.name = name
-        self.schema = schema
 
     @property
     def fqdn(self):
@@ -197,12 +188,6 @@ class CatColumn(Base):
     sort_order = Column(Integer)
     table_id = Column(Integer, ForeignKey("tables.id"))
     table = relationship("CatTable", back_populates="columns", lazy="joined")
-
-    def __init__(self, name: str, data_type: str, sort_order: int, table: CatTable):
-        self.name = name
-        self.data_type = data_type
-        self.sort_order = sort_order
-        self.table = table
 
     @property
     def fqdn(self):
@@ -257,10 +242,6 @@ class Job(Base):
     name = Column(String, unique=True)
     context = Column(JSONB)
 
-    def __init__(self, name: str, context: Dict[Any, Any] = None):
-        self.name = name
-        self.context = context
-
     def __repr__(self):
         return "<Job {}, {}".format(self.name, self.context)
 
@@ -281,18 +262,6 @@ class JobExecution(Base):
     started_at = Column(TIMESTAMP)
     ended_at = Column(TIMESTAMP)
     status = Column(Enum(JobExecutionStatus))
-
-    def __init__(
-        self,
-        job_id: int,
-        started_at: datetime.datetime,
-        ended_at: datetime.datetime,
-        status: JobExecutionStatus,
-    ):
-        self.job_id = job_id
-        self.started_at = started_at
-        self.ended_at = ended_at
-        self.status = status
 
     def __repr__(self):
         return "<Job Execution ({}), {}, {}, {}>".format(
@@ -315,18 +284,6 @@ class ColumnLineage(Base):
     job_execution = relationship(
         "JobExecution", foreign_keys=job_execution_id, lazy="joined"
     )
-
-    def __init__(
-        self,
-        source_id: int,
-        target_id: int,
-        job_execution_id: str,
-        payload: Dict[Any, Any],
-    ):
-        self.source_id = source_id
-        self.target_id = target_id
-        self.job_execution_id = job_execution_id
-        self.context = payload
 
     def __repr__(self):
         return "<Edge: {} -> {} by {}. payload: {}>".format(
