@@ -4,10 +4,8 @@ import shutil
 from pathlib import Path
 
 import click
-import yaml
 
-from dbcat import __version__, pull
-from dbcat.catalog.catalog import Catalog
+from dbcat import __version__, add_connections, catalog_connection, pull, pull_all
 from dbcat.log_mixin import LogMixin
 
 
@@ -49,36 +47,36 @@ config_template = """
 
 catalog:
 ## Postgres/MySQL
-  type: "postgres" or "mysql"
   user: db_user
   password: db_password
   host: db_host
   port: db_port
+  database: db_database
 
 connections:
   - name: pg
-    type: postgres
+    source_type: postgresql
     database: db_database
     username: db_user
     password: db_password
     port: db_port
     uri: db_uri
   - name: mys
-    type: mysql
+    source_type: mysql
     database: db_database
     username: db_user
     password: db_password
     port: db_port
     uri: db_uri
   - name: bq
-    type: bigquery
+    source_type: bigquery
     key_path: db_key_path
     project_credentials:  db_creds
     project_id: db_project_id
   - name: gl
-    type: glue
+    source_type: glue
   - name: sf
-    type: snowflake
+    source_type: snowflake
     database: db_database
     username: db_user
     password: db_password
@@ -111,20 +109,28 @@ def init(obj, delete):
 @main.command("pull", help="Scan and load metadata from databases into the catalog")
 @click.option(
     "-c",
-    "--connection-name",
+    "--connection-names",
+    multiple=True,
     help="Name of the connection. If not specified, all databases are scanned",
 )
 @click.pass_obj
 def pull_cli(
-    obj, connection_name,
+    obj, connection_names,
 ):
     config_file = obj["config_dir"] / "config"
-    logger = LogMixin()
-    logger.logger.debug("Config file: {}".format(config_file))
+    logging.debug("Config file: {}".format(config_file))
     with open(config_file, "r") as file:
-        config = yaml.load(file, Loader=yaml.FullLoader)
+        config = file.read()
 
-    logger.logger.debug(config)
+    logging.debug(config)
 
-    catalog = Catalog(**config["catalog"])
-    pull(catalog)
+    catalog_obj = catalog_connection(config)
+    try:
+        add_connections(catalog_obj, config)
+        if len(connection_names) == 0:
+            pull_all(catalog_obj)
+        else:
+            for conn in connection_names:
+                pull(catalog_obj, conn)
+    finally:
+        catalog_obj.close()

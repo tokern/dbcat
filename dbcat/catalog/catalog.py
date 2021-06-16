@@ -300,6 +300,9 @@ class Catalog(LogMixin):
             self.logger.debug("No job ids provided. Return all edges")
         return query.all()
 
+    def get_sources(self) -> List[CatSource]:
+        return self.scoped_session.query(CatSource).all()
+
     def search_sources(self, source_like: str) -> List[CatSource]:
         return (
             self.scoped_session.query(CatSource)
