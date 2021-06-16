@@ -21,10 +21,9 @@ from pyhocon import ConfigFactory, ConfigTree
 
 from dbcat.catalog.catalog import Catalog
 from dbcat.catalog.models import CatSource
-from dbcat.log_mixin import LogMixin
 
 
-class DbScanner(LogMixin):
+class DbScanner:
     def __init__(self, catalog: Catalog, source: CatSource):
         self._name = source.name
         self._extractor: Extractor = None
@@ -51,6 +50,9 @@ class DbScanner(LogMixin):
         return self._name
 
     def scan(self):
+        schema_count = 0
+        table_count = 0
+        column_count = 0
         with closing(self._extractor) as extractor:
             extractor.init(Scoped.get_scoped_conf(self._conf, extractor.get_scope()))
 
@@ -58,6 +60,7 @@ class DbScanner(LogMixin):
             current_schema = self._catalog.add_schema(
                 schema_name=record.schema, source=self._source
             )
+            schema_count += 1
 
             while record:
                 logging.debug(record)
@@ -65,10 +68,12 @@ class DbScanner(LogMixin):
                     current_schema = self._catalog.add_schema(
                         schema_name=record.schema, source=self._source
                     )
+                    schema_count += 1
 
                 table = self._catalog.add_table(
                     table_name=record.name, schema=current_schema
                 )
+                table_count += 1
                 index = 0
                 for c in record.columns:
                     self._catalog.add_column(
@@ -78,8 +83,14 @@ class DbScanner(LogMixin):
                         table=table,
                     )
                     index += 1
-
+                    column_count += 1
                 record = extractor.extract()
+
+        logging.debug(
+            "Scanned {} schemata, {} tables, {} columns".format(
+                schema_count, table_count, column_count
+            )
+        )
 
     @staticmethod
     def _create_sqlalchemy_extractor(
