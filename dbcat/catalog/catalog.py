@@ -1,10 +1,9 @@
 import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import create_engine, desc, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session, scoped_session, sessionmaker
-from sqlalchemy.orm.exc import NoResultFound
 
 from dbcat.catalog.models import (
     Base,
@@ -61,57 +60,42 @@ class Catalog(LogMixin):
         if self._engine is not None:
             self._engine.dispose()
 
-    def _get_one_or_create(
+    def _create(
         self, model, create_method="", create_method_kwargs=None, **kwargs
-    ) -> Tuple[Base, bool]:
+    ) -> Base:
         session = self.scoped_session
 
         try:
-            return session.query(model).filter_by(**kwargs).one(), False
-        except NoResultFound:
             kwargs.update(create_method_kwargs or {})
-            try:
-                created = getattr(model, create_method, model)(**kwargs)
-                session.add(created)
-                session.commit()
-                return created, True
-            except IntegrityError:
-                return session.query(model).filter_by(**kwargs).one(), False
+            created = getattr(model, create_method, model)(**kwargs)
+            session.add(created)
+            session.commit()
+            return created
+        except IntegrityError:
+            session.rollback()
+            return session.query(model).filter_by(**kwargs).one()
 
     def add_source(self, name: str, source_type: str, **kwargs) -> CatSource:
-        obj, created = self._get_one_or_create(
-            CatSource, name=name, source_type=source_type, **kwargs
-        )
-        return obj
+        return self._create(CatSource, name=name, source_type=source_type, **kwargs)
 
     def add_schema(self, schema_name: str, source: CatSource) -> CatSchema:
-        obj, created = self._get_one_or_create(
-            CatSchema, name=schema_name, source=source
-        )
-
-        return obj
+        return self._create(CatSchema, name=schema_name, source=source)
 
     def add_table(self, table_name: str, schema: CatSchema) -> CatTable:
-        obj, created = self._get_one_or_create(CatTable, name=table_name, schema=schema)
-
-        return obj
+        return self._create(CatTable, name=table_name, schema=schema)
 
     def add_column(
         self, column_name: str, data_type: str, sort_order: int, table: CatTable
     ) -> CatColumn:
-        obj, created = self._get_one_or_create(
+        return self._create(
             model=CatColumn,
             create_method_kwargs={"data_type": data_type, "sort_order": sort_order},
             name=column_name,
             table=table,
         )
 
-        return obj
-
-    def add_job(self, name: str, context: Dict[Any, Any]) -> Job:
-        obj, created = self._get_one_or_create(model=Job, name=name, context=context)
-
-        return obj
+    def add_job(self, name: str, source: CatSource, context: Dict[Any, Any]) -> Job:
+        return self._create(model=Job, name=name, source=source, context=context)
 
     def add_job_execution(
         self,
@@ -120,15 +104,13 @@ class Catalog(LogMixin):
         ended_at: datetime.datetime,
         status: JobExecutionStatus,
     ) -> JobExecution:
-        obj, created = self._get_one_or_create(
+        return self._create(
             model=JobExecution,
             job_id=job.id,
             started_at=started_at,
             ended_at=ended_at,
             status=status,
         )
-
-        return obj
 
     def add_column_lineage(
         self,
@@ -137,15 +119,13 @@ class Catalog(LogMixin):
         job_execution_id: int,
         context: Dict[Any, Any],
     ) -> ColumnLineage:
-        column_edge, created = self._get_one_or_create(
+        return self._create(
             ColumnLineage,
             source_id=source.id,
             target_id=target.id,
             job_execution_id=job_execution_id,
             create_method_kwargs={"context": context},
         )
-
-        return column_edge
 
     def get_source(self, source_name: str) -> CatSource:
         return (
@@ -177,7 +157,7 @@ class Catalog(LogMixin):
         )
 
     def get_columns_for_table(
-        self, table: CatTable, column_names: List[str] = []
+        self, table: CatTable, column_names: List[str] = None
     ) -> List[CatColumn]:
         stmt = (
             self.scoped_session.query(CatColumn)
@@ -189,7 +169,7 @@ class Catalog(LogMixin):
             .filter(CatTable.name == table.name)
         )
 
-        if len(column_names) > 0:
+        if column_names is not None:
             stmt = stmt.filter(CatColumn.name.in_(column_names))
         stmt = stmt.order_by(CatColumn.sort_order)
         return stmt.all()

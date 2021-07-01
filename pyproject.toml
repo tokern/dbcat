@@ -26,10 +26,7 @@ python = "^3.8"
 click = "*"
 PyYAML = "*"
 psycopg2-binary = "*"
-SQLAlchemy = ">=1.3.6,<1.4"
-boto3 = "1.10.1"
-cryptography = "^3.3.2"
-amundsen-databuilder = {extras = ["athena", "bigquery", "glue", "rds", "snowflake"], version = "^4.4.1"}
+amundsen-databuilder = {extras = ["athena", "bigquery", "glue", "rds", "snowflake"], version = "^5.2.0"}
 
 [tool.poetry.dev-dependencies]
 black = "==19.10b0"
@@ -40,7 +37,12 @@ pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
 PyMySQL = "^1.0.2"
+types-PyYAML = "^5.4.3"
+types-PyMySQL = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+dbcat = "dbcat.__main__:main"

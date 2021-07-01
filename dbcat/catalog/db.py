@@ -26,8 +26,8 @@ from dbcat.catalog.models import CatSource
 class DbScanner:
     def __init__(self, catalog: Catalog, source: CatSource):
         self._name = source.name
-        self._extractor: Extractor = None
-        self._conf: ConfigTree = None
+        self._extractor: Extractor
+        self._conf: ConfigTree
         self._catalog = catalog
         self._source = source
         if source.source_type == "bigquery":

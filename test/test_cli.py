@@ -89,7 +89,15 @@ def test_cli_connection(clean_catalog, config_path, source):
     runner = CliRunner()
     result = runner.invoke(
         main,
-        ["--config-dir", config_path, "pull", "--connection-names", connection_name],
+        [
+            "--log-level",
+            "DEBUG",
+            "--config-dir",
+            config_path,
+            "pull",
+            "--connection-names",
+            connection_name,
+        ],
     )
     print(result.stdout)
     assert result.exit_code == 0

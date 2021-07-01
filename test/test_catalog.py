@@ -371,8 +371,10 @@ def test_add_sources(open_catalog_connection):
 @pytest.fixture(scope="module")
 def load_job_and_executions(save_catalog):
     catalog = save_catalog
+    source = catalog.get_source("test")
     job = catalog.add_job(
         "insert_page_lookup_redirect",
+        source,
         {
             "sql": "insert into page_lookup_redirect(page_id, page_version) select page_idm, page_latest from page"
         },
@@ -485,7 +487,7 @@ def load_edges(catalog, expected_edges, job_execution_id):
 @pytest.fixture(scope="module")
 def load_page_lookup_nonredirect_edges(save_catalog):
     catalog = save_catalog
-
+    source = catalog.get_source("test")
     expected_edges = [
         (
             ("test", "default", "page", "page_id"),
@@ -511,6 +513,7 @@ def load_page_lookup_nonredirect_edges(save_catalog):
 
     job = catalog.add_job(
         "insert_page_lookup_nonredirect",
+        source,
         {"sql": "insert into page_lookup_nonredirect select from page"},
     )
     e1 = catalog.add_job_execution(
