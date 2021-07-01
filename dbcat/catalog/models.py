@@ -2,7 +2,15 @@ import enum
 from typing import Optional
 
 from snowflake.sqlalchemy import URL
-from sqlalchemy import TIMESTAMP, Column, Enum, ForeignKey, Integer, String
+from sqlalchemy import (
+    TIMESTAMP,
+    Column,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm import relationship
@@ -15,7 +23,7 @@ class CatSource(Base):
 
     id = Column(Integer, primary_key=True)
     source_type = Column(String)
-    name = Column(String)
+    name = Column(String, unique=True)
     dialect = Column(String)
     uri = Column(String)
     port = Column(String)
@@ -33,7 +41,9 @@ class CatSource(Base):
     account = Column(String)
     role = Column(String)
     warehouse = Column(String)
+
     schemata = relationship("CatSchema", back_populates="source")
+    jobs = relationship("Job", back_populates="source")
 
     def __init__(
         self,
@@ -138,6 +148,8 @@ class CatSchema(Base):
     source = relationship("CatSource", back_populates="schemata", lazy="joined")
     tables = relationship("CatTable", back_populates="schema")
 
+    __table_args__ = (UniqueConstraint("source_id", "name", name="unique_schema_name"),)
+
     @property
     def fqdn(self):
         return self.source.name, self.name
@@ -162,6 +174,8 @@ class CatTable(Base):
     columns = relationship(
         "CatColumn", back_populates="table", order_by="CatColumn.sort_order"
     )
+
+    __table_args__ = (UniqueConstraint("schema_id", "name", name="unique_table_name"),)
 
     @property
     def fqdn(self):
@@ -188,6 +202,8 @@ class CatColumn(Base):
     sort_order = Column(Integer)
     table_id = Column(Integer, ForeignKey("tables.id"))
     table = relationship("CatTable", back_populates="columns", lazy="joined")
+
+    __table_args__ = (UniqueConstraint("table_id", "name", name="unique_column_name"),)
 
     @property
     def fqdn(self):
@@ -241,6 +257,10 @@ class Job(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
     context = Column(JSONB)
+    source_id = Column(Integer, ForeignKey("sources.id"))
+    source = relationship("CatSource", back_populates="jobs")
+
+    __table_args__ = (UniqueConstraint("source_id", "name"),)
 
     def __repr__(self):
         return "<Job {}, {}".format(self.name, self.context)
@@ -283,6 +303,12 @@ class ColumnLineage(Base):
     target = relationship("CatColumn", foreign_keys=target_id, lazy="joined")
     job_execution = relationship(
         "JobExecution", foreign_keys=job_execution_id, lazy="joined"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id", "target_id", "job_execution_id", name="unique_lineage"
+        ),
     )
 
     def __repr__(self):
