@@ -12,6 +12,7 @@ from dbcat.catalog.models import (
     CatSource,
     CatTable,
     ColumnLineage,
+    DefaultSchema,
     Job,
     JobExecution,
     JobExecutionStatus,
@@ -21,7 +22,13 @@ from dbcat.log_mixin import LogMixin
 
 class Catalog(LogMixin):
     def __init__(
-        self, user: str, password: str, database: str, host: str, port: str = None,
+        self,
+        user: str,
+        password: str,
+        database: str,
+        host: str,
+        port: str = None,
+        **kwargs
     ):
         self.user: str = user
         self.password: str = password
@@ -30,6 +37,7 @@ class Catalog(LogMixin):
         self.database: str = database
         self._engine: object = None
         self._scoped_session = None
+        self._connection_args = kwargs
 
     @property
     def engine(self) -> object:
@@ -41,7 +49,8 @@ class Catalog(LogMixin):
                     host=self.host,
                     port=self.port,
                     database=self.database,
-                )
+                ),
+                **self._connection_args
             )
         return self._engine
 
@@ -66,14 +75,18 @@ class Catalog(LogMixin):
         session = self.scoped_session
 
         try:
-            kwargs.update(create_method_kwargs or {})
-            created = getattr(model, create_method, model)(**kwargs)
+            if create_method_kwargs is None:
+                create_method_kwargs = {}
+            create_method_kwargs.update(kwargs or {})
+            created = getattr(model, create_method, model)(**create_method_kwargs)
             session.add(created)
             session.commit()
             return created
         except IntegrityError:
             session.rollback()
             return session.query(model).filter_by(**kwargs).one()
+        finally:
+            session.rollback()
 
     def add_source(self, name: str, source_type: str, **kwargs) -> CatSource:
         return self._create(CatSource, name=name, source_type=source_type, **kwargs)
@@ -95,7 +108,12 @@ class Catalog(LogMixin):
         )
 
     def add_job(self, name: str, source: CatSource, context: Dict[Any, Any]) -> Job:
-        return self._create(model=Job, name=name, source=source, context=context)
+        return self._create(
+            model=Job,
+            name=name,
+            source=source,
+            create_method_kwargs={"context": context},
+        )
 
     def add_job_execution(
         self,
@@ -356,3 +374,10 @@ class Catalog(LogMixin):
         stmt = stmt.filter(CatColumn.name.like(column_like))
         self.logger.debug(str(stmt))
         return stmt.all()
+
+    def update_source(
+        self, source: CatSource, default_schema: CatSchema
+    ) -> DefaultSchema:
+        return self._create(
+            DefaultSchema, source_id=source.id, schema_id=default_schema.id
+        )
