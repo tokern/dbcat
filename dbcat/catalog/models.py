@@ -44,6 +44,12 @@ class CatSource(Base):
 
     schemata = relationship("CatSchema", back_populates="source")
     jobs = relationship("Job", back_populates="source")
+    default_schema = relationship(
+        "DefaultSchema",
+        back_populates="source",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
     def __init__(
         self,
@@ -162,6 +168,15 @@ class CatSchema(Base):
 
     def __hash__(self):
         return hash(self.fqdn)
+
+
+class DefaultSchema(Base):
+    __tablename__ = "default_schema"
+
+    source_id = Column(Integer, ForeignKey("sources.id"), primary_key=True)
+    schema_id = Column(Integer, ForeignKey("schemata.id"))
+    schema = relationship("CatSchema")
+    source = relationship("CatSource", back_populates="default_schema")
 
 
 class CatTable(Base):

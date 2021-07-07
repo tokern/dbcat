@@ -312,6 +312,25 @@ def test_search_column(save_catalog):
     assert len(name_only) == 3
 
 
+def test_update_default_schema(save_catalog):
+    catalog = save_catalog
+    source = catalog.get_source("test")
+    schema = catalog.get_schema("test", "default")
+
+    inserted_default_schema = catalog.update_source(
+        source=source, default_schema=schema
+    )
+
+    default_schema = source.default_schema
+
+    assert default_schema.source_id == inserted_default_schema.source_id
+    assert default_schema.schema_id == inserted_default_schema.schema_id
+    assert default_schema.source_id == source.id
+    assert default_schema.schema_id == schema.id
+    assert default_schema.schema == schema
+    assert default_schema.source == source
+
+
 def test_add_sources(open_catalog_connection):
     catalog = open_catalog_connection
     with open("test/connections.yaml") as f:
