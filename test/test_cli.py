@@ -8,19 +8,20 @@ from dbcat.catalog import CatSource
 
 
 def run_asserts(catalog, connection_name):
-    pg_source = catalog.get_source(connection_name)
-    assert pg_source is not None
+    with catalog.managed_session:
+        pg_source = catalog.get_source(connection_name)
+        assert pg_source is not None
 
-    pg_schemata = pg_source.schemata
-    assert len(pg_schemata) == 1
+        pg_schemata = pg_source.schemata
+        assert len(pg_schemata) == 1
 
-    pg_tables = pg_schemata[0].tables
-    assert len(pg_tables) == 3
+        pg_tables = pg_schemata[0].tables
+        assert len(pg_tables) == 3
 
-    pg_columns = []
-    for table in pg_tables:
-        pg_columns = pg_columns + table.columns
-    assert len(pg_columns) == 6
+        pg_columns = []
+        for table in pg_tables:
+            pg_columns = pg_columns + table.columns
+        assert len(pg_columns) == 6
 
 
 connection_config = """
@@ -58,14 +59,14 @@ def config_path(tmp_path_factory, request):
 def clean_catalog(load_all_data, open_catalog_connection, request):
     catalog = open_catalog_connection
     yield catalog
-    session = catalog.scoped_session
-    logging.debug("Starting clean up of catalog")
-    [
-        session.delete(db)
-        for db in session.query(CatSource)
-        .filter(CatSource.name.like("%{}%".format(request.node.name)))
-        .all()
-    ]
+    with catalog.managed_session as session:
+        logging.debug("Starting clean up of catalog")
+        [
+            session.delete(db)
+            for db in session.query(CatSource)
+            .filter(CatSource.name.like("%{}%".format(request.node.name)))
+            .all()
+        ]
 
 
 def test_cli_all(clean_catalog, config_path):

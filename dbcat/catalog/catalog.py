@@ -1,4 +1,5 @@
 import datetime
+from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import create_engine, desc, func
@@ -38,6 +39,7 @@ class Catalog(LogMixin):
         self._engine: object = None
         self._scoped_session = None
         self._connection_args = kwargs
+        self._current_session: scoped_session = None
 
     @property
     def engine(self) -> object:
@@ -54,24 +56,41 @@ class Catalog(LogMixin):
             )
         return self._engine
 
-    @property
-    def scoped_session(self) -> scoped_session:
+    def get_scoped_session(self) -> scoped_session:
         if self._scoped_session is None:
             self._scoped_session = scoped_session(sessionmaker(bind=self.engine))
 
         return self._scoped_session
 
-    def close(self):
-        if self._scoped_session is not None:
-            self._scoped_session.remove()
+    @property  # type: ignore
+    @contextmanager
+    def managed_session(self) -> scoped_session:
+        if self._current_session is not None:
+            yield self._current_session
+            return
 
+        try:
+            self._current_session = self.get_scoped_session()
+            self.logger.debug(
+                "Started new managed session: {}".format(self._current_session)
+            )
+            yield self._current_session
+        finally:
+            if self._current_session is not None:
+                self.logger.debug(
+                    "Removed managed session: {}".format(self._current_session)
+                )
+                self._current_session.remove()
+            self._current_session = None
+
+    def close(self):
         if self._engine is not None:
             self._engine.dispose()
 
     def _create(
         self, model, create_method="", create_method_kwargs=None, **kwargs
     ) -> Base:
-        session = self.scoped_session
+        session: scoped_session = self._current_session
 
         try:
             if create_method_kwargs is None:
@@ -84,8 +103,6 @@ class Catalog(LogMixin):
         except IntegrityError:
             session.rollback()
             return session.query(model).filter_by(**kwargs).one()
-        finally:
-            session.rollback()
 
     def add_source(self, name: str, source_type: str, **kwargs) -> CatSource:
         return self._create(CatSource, name=name, source_type=source_type, **kwargs)
@@ -146,14 +163,14 @@ class Catalog(LogMixin):
 
     def get_source(self, source_name: str) -> CatSource:
         return (
-            self.scoped_session.query(CatSource)
+            self._current_session.query(CatSource)
             .filter(CatSource.name == source_name)
             .one()
         )
 
     def get_schema(self, source_name: str, schema_name: str) -> CatSchema:
         return (
-            self.scoped_session.query(CatSchema)
+            self._current_session.query(CatSchema)
             .join(CatSchema.source)
             .filter(CatSource.name == source_name)
             .filter(CatSchema.name == schema_name)
@@ -164,7 +181,7 @@ class Catalog(LogMixin):
         self, source_name: str, schema_name: str, table_name: str
     ) -> CatTable:
         return (
-            self.scoped_session.query(CatTable)
+            self._current_session.query(CatTable)
             .join(CatTable.schema)
             .join(CatSchema.source)
             .filter(CatSource.name == source_name)
@@ -177,7 +194,7 @@ class Catalog(LogMixin):
         self, table: CatTable, column_names: List[str] = None
     ) -> List[CatColumn]:
         stmt = (
-            self.scoped_session.query(CatColumn)
+            self._current_session.query(CatColumn)
             .join(CatColumn.table)
             .join(CatTable.schema)
             .join(CatSchema.source)
@@ -195,7 +212,7 @@ class Catalog(LogMixin):
         self, database_name: str, schema_name: str, table_name: str, column_name: str
     ) -> CatColumn:
         return (
-            self.scoped_session.query(CatColumn)
+            self._current_session.query(CatColumn)
             .join(CatColumn.table)
             .join(CatTable.schema)
             .join(CatSchema.source)
@@ -207,11 +224,11 @@ class Catalog(LogMixin):
         )
 
     def get_job(self, name: str) -> Job:
-        return self.scoped_session.query(Job).filter(Job.name == name).one()
+        return self._current_session.query(Job).filter(Job.name == name).one()
 
     def get_job_executions(self, job: Job) -> List[JobExecution]:
         return (
-            self.scoped_session.query(JobExecution)
+            self._current_session.query(JobExecution)
             .filter(JobExecution.job_id == job.id)
             .order_by(JobExecution.started_at.asc())
             .all()
@@ -219,31 +236,39 @@ class Catalog(LogMixin):
 
     def get_job_execution(self, job_execution_id: int) -> JobExecution:
         return (
-            self.scoped_session.query(JobExecution)
+            self._current_session.query(JobExecution)
             .filter(JobExecution.id == job_execution_id)
             .one()
         )
 
     def get_source_by_id(self, source_id: int) -> CatSource:
         return (
-            self.scoped_session.query(CatSource).filter(CatSource.id == source_id).one()
+            self._current_session.query(CatSource)
+            .filter(CatSource.id == source_id)
+            .one()
         )
 
     def get_schema_by_id(self, schema_id: int) -> CatSchema:
         return (
-            self.scoped_session.query(CatSchema).filter(CatSchema.id == schema_id).one()
+            self._current_session.query(CatSchema)
+            .filter(CatSchema.id == schema_id)
+            .one()
         )
 
     def get_table_by_id(self, table_id: int) -> CatTable:
-        return self.scoped_session.query(CatTable).filter(CatTable.id == table_id).one()
+        return (
+            self._current_session.query(CatTable).filter(CatTable.id == table_id).one()
+        )
 
     def get_column_by_id(self, column_id: int) -> CatColumn:
         return (
-            self.scoped_session.query(CatColumn).filter(CatColumn.id == column_id).one()
+            self._current_session.query(CatColumn)
+            .filter(CatColumn.id == column_id)
+            .one()
         )
 
     def get_job_by_id(self, job_id: int) -> Job:
-        return self.scoped_session.query(Job).filter(Job.id == job_id).one()
+        return self._current_session.query(Job).filter(Job.id == job_id).one()
 
     @staticmethod
     def _get_latest_job_executions(session: Session, job_ids: List[int]) -> Query:
@@ -267,11 +292,11 @@ class Catalog(LogMixin):
 
     def get_latest_job_executions(self, job_ids: List[int]) -> List[JobExecution]:
         return (
-            self.scoped_session.query(JobExecution)
+            self._current_session.query(JobExecution)
             .filter(
                 JobExecution.id.in_(
                     self._get_latest_job_executions(
-                        self.scoped_session(), job_ids
+                        self._current_session, job_ids
                     ).subquery()
                 )
             )
@@ -279,7 +304,7 @@ class Catalog(LogMixin):
         )
 
     def get_column_lineages(self, job_ids: List[int] = None) -> List[ColumnLineage]:
-        query = self.scoped_session.query(ColumnLineage)
+        query = self._current_session.query(ColumnLineage)
         if job_ids is not None and len(job_ids) > 0:
             self.logger.debug(
                 "Search for lineages from [{}]".format(
@@ -289,7 +314,7 @@ class Catalog(LogMixin):
             query = query.filter(
                 ColumnLineage.job_execution_id.in_(
                     self._get_latest_job_executions(
-                        self.scoped_session(), job_ids
+                        self.get_scoped_session(), job_ids
                     ).subquery()
                 )
             )
@@ -298,11 +323,11 @@ class Catalog(LogMixin):
         return query.all()
 
     def get_sources(self) -> List[CatSource]:
-        return self.scoped_session.query(CatSource).all()
+        return self._current_session.query(CatSource).all()
 
     def search_sources(self, source_like: str) -> List[CatSource]:
         return (
-            self.scoped_session.query(CatSource)
+            self._current_session.query(CatSource)
             .filter(CatSource.name.like(source_like))
             .all()
         )
@@ -310,7 +335,7 @@ class Catalog(LogMixin):
     def search_schema(
         self, schema_like: str, source_like: Optional[str] = None
     ) -> List[CatSchema]:
-        stmt = self.scoped_session.query(CatSchema)
+        stmt = self._current_session.query(CatSchema)
         if source_like is not None:
             stmt = stmt.join(CatSchema.source).filter(CatSource.name.like(source_like))
         stmt = stmt.filter(CatSchema.name.like(schema_like))
@@ -323,7 +348,7 @@ class Catalog(LogMixin):
         schema_like: Optional[str] = None,
         source_like: Optional[str] = None,
     ) -> List[CatTable]:
-        stmt = self.scoped_session.query(CatTable)
+        stmt = self._current_session.query(CatTable)
         if source_like is not None or schema_like is not None:
             stmt = stmt.join(CatTable.schema)
         if source_like is not None:
@@ -358,7 +383,7 @@ class Catalog(LogMixin):
         schema_like: Optional[str] = None,
         source_like: Optional[str] = None,
     ) -> List[CatColumn]:
-        stmt = self.scoped_session.query(CatColumn)
+        stmt = self._current_session.query(CatColumn)
         if source_like is not None or schema_like is not None or table_like is not None:
             stmt = stmt.join(CatColumn.table)
         if source_like is not None or schema_like is not None:
@@ -371,7 +396,6 @@ class Catalog(LogMixin):
             stmt = stmt.filter(CatTable.name.like(table_like))
 
         stmt = stmt.filter(CatColumn.name.like(column_like))
-        self.logger.debug(str(stmt))
         return stmt.all()
 
     def update_source(
