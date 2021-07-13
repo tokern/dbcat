@@ -32,25 +32,26 @@ class File:
         with open(self.path, "r") as file:
             content = json.load(file)
 
-        source = self._catalog.add_source(
-            name=content["name"], source_type=content["source_type"]
-        )
-        for s in content["schemata"]:
-            schema = self._catalog.add_schema(s["name"], source=source)
+        with self._catalog.managed_session:
+            source = self._catalog.add_source(
+                name=content["name"], source_type=content["source_type"]
+            )
+            for s in content["schemata"]:
+                schema = self._catalog.add_schema(s["name"], source=source)
 
-            for t in s["tables"]:
-                table = self._catalog.add_table(t["name"], schema)
+                for t in s["tables"]:
+                    table = self._catalog.add_table(t["name"], schema)
 
-                index = 0
-                for c in t["columns"]:
-                    print(c)
-                    self._catalog.add_column(
-                        column_name=c["name"],
-                        data_type=c["data_type"],
-                        sort_order=index,
-                        table=table,
-                    )
-                    index += 1
+                    index = 0
+                    for c in t["columns"]:
+                        print(c)
+                        self._catalog.add_column(
+                            column_name=c["name"],
+                            data_type=c["data_type"],
+                            sort_order=index,
+                            table=table,
+                        )
+                        index += 1
 
 
 @pytest.fixture(scope="module")
@@ -59,9 +60,9 @@ def save_catalog(open_catalog_connection):
     scanner = File("test", "test/catalog.json", catalog)
     scanner.scan()
     yield catalog
-    session = catalog.scoped_session
-    [session.delete(db) for db in session.query(CatSource).all()]
-    session.commit()
+    with catalog.managed_session as session:
+        [session.delete(db) for db in session.query(CatSource).all()]
+        session.commit()
 
 
 def test_catalog_config(root_connection):
@@ -79,99 +80,110 @@ def test_sqlalchemy_root(root_connection):
 
 
 def test_catalog_tables(open_catalog_connection: Catalog):
-    session = open_catalog_connection.scoped_session
+    with open_catalog_connection.managed_session as session:
 
-    assert len(session.query(CatSource).all()) == 0
-    assert len(session.query(CatSchema).all()) == 0
-    assert len(session.query(CatTable).all()) == 0
-    assert len(session.query(CatColumn).all()) == 0
+        assert len(session.query(CatSource).all()) == 0
+        assert len(session.query(CatSchema).all()) == 0
+        assert len(session.query(CatTable).all()) == 0
+        assert len(session.query(CatColumn).all()) == 0
 
 
-def test_read_catalog(save_catalog):
-    catalog = save_catalog
+def test_read_catalog(managed_session):
+    catalog = managed_session
 
-    session = catalog.scoped_session
-    dbs = session.query(CatSource).all()
-    assert len(dbs) == 1
-    db = dbs[0]
-    assert db.name == "test"
+    with catalog.managed_session as session:
+        dbs = session.query(CatSource).all()
+        assert len(dbs) == 1
+        db = dbs[0]
+        assert db.name == "test"
 
-    assert len(db.schemata) == 1
-    schema = db.schemata[0]
+        assert len(db.schemata) == 1
+        schema = db.schemata[0]
 
-    assert schema.name == "default"
-    assert len(schema.tables) == 8
+        assert schema.name == "default"
+        assert len(schema.tables) == 8
 
-    tables = (
-        session.query(CatTable).filter(CatTable.name == "normalized_pagecounts").all()
-    )
-    assert len(tables) == 1
-    table = tables[0]
-    assert table is not None
-    assert table.name == "normalized_pagecounts"
-    assert len(table.columns) == 5
+        tables = (
+            session.query(CatTable)
+            .filter(CatTable.name == "normalized_pagecounts")
+            .all()
+        )
+        assert len(tables) == 1
+        table = tables[0]
+        assert table is not None
+        assert table.name == "normalized_pagecounts"
+        assert len(table.columns) == 5
 
-    page_id_column = table.columns[0]
-    assert page_id_column.name == "page_id"
-    assert page_id_column.data_type == "BIGINT"
-    assert page_id_column.sort_order == 0
+        page_id_column = table.columns[0]
+        assert page_id_column.name == "page_id"
+        assert page_id_column.data_type == "BIGINT"
+        assert page_id_column.sort_order == 0
 
-    page_title_column = table.columns[1]
-    assert page_title_column.name == "page_title"
-    assert page_title_column.data_type == "STRING"
-    assert page_title_column.sort_order == 1
+        page_title_column = table.columns[1]
+        assert page_title_column.name == "page_title"
+        assert page_title_column.data_type == "STRING"
+        assert page_title_column.sort_order == 1
 
-    page_url_column = table.columns[2]
-    assert page_url_column.name == "page_url"
-    assert page_url_column.data_type == "STRING"
-    assert page_url_column.sort_order == 2
+        page_url_column = table.columns[2]
+        assert page_url_column.name == "page_url"
+        assert page_url_column.data_type == "STRING"
+        assert page_url_column.sort_order == 2
 
-    views_column = table.columns[3]
-    assert views_column.name == "views"
-    assert views_column.data_type == "BIGINT"
-    assert views_column.sort_order == 3
+        views_column = table.columns[3]
+        assert views_column.name == "views"
+        assert views_column.data_type == "BIGINT"
+        assert views_column.sort_order == 3
 
-    bytes_sent_column = table.columns[4]
-    assert bytes_sent_column.name == "bytes_sent"
-    assert bytes_sent_column.data_type == "BIGINT"
-    assert bytes_sent_column.sort_order == 4
+        bytes_sent_column = table.columns[4]
+        assert bytes_sent_column.name == "bytes_sent"
+        assert bytes_sent_column.data_type == "BIGINT"
+        assert bytes_sent_column.sort_order == 4
 
 
 @pytest.mark.skip
-def test_update_catalog(save_catalog):
-    catalog = save_catalog
+def test_update_catalog(managed_session):
+    catalog = managed_session
 
-    session = catalog.scoped_session
-    page_counts = session.query(CatTable).filter(CatTable.name == "pagecounts").one()
-    group_col = (
-        session.query(CatColumn)
-        .filter(CatColumn.name == "group", CatColumn.table == page_counts)
-        .one()
-    )
+    with catalog.managed_session as session:
+        page_counts = (
+            session.query(CatTable).filter(CatTable.name == "pagecounts").one()
+        )
+        group_col = (
+            session.query(CatColumn)
+            .filter(CatColumn.name == "group", CatColumn.table == page_counts)
+            .one()
+        )
 
-    assert group_col.data_type == "STRING"
+        assert group_col.data_type == "STRING"
 
-    catalog.schemata[0].tables[0].columns[0]._type = "BIGINT"
-    catalog.save_catalog(catalog)
+        catalog.schemata[0].tables[0].columns[0]._type = "BIGINT"
 
-    page_counts = session.query(CatTable).filter(CatTable.name == "pagecounts").one()
-    group_col = (
-        session.query(CatColumn)
-        .filter(CatColumn.name == "group", CatColumn.table == page_counts)
-        .one()
-    )
+        page_counts = (
+            session.query(CatTable).filter(CatTable.name == "pagecounts").one()
+        )
+        group_col = (
+            session.query(CatColumn)
+            .filter(CatColumn.name == "group", CatColumn.table == page_counts)
+            .one()
+        )
 
-    assert group_col.data_type == "BIGINT"
+        assert group_col.data_type == "BIGINT"
 
 
-def test_get_source(save_catalog):
-    catalog = save_catalog
+@pytest.fixture(scope="function")
+def managed_session(save_catalog):
+    with save_catalog.managed_session:
+        yield save_catalog
+
+
+def test_get_source(managed_session):
+    catalog = managed_session
     source = catalog.get_source("test")
     assert source.fqdn == "test"
 
 
-def test_get_source_by_id(save_catalog):
-    catalog = save_catalog
+def test_get_source_by_id(managed_session):
+    catalog = managed_session
     source = catalog.get_source("test")
 
     source_by_id = catalog.get_source_by_id(source.id)
@@ -179,28 +191,28 @@ def test_get_source_by_id(save_catalog):
     assert source_by_id.fqdn == "test"
 
 
-def test_get_schema(save_catalog):
-    catalog = save_catalog
+def test_get_schema(managed_session):
+    catalog = managed_session
     schema = catalog.get_schema("test", "default")
     assert schema.fqdn == ("test", "default")
 
 
-def test_get_schema_by_id(save_catalog):
-    catalog = save_catalog
+def test_get_schema_by_id(managed_session):
+    catalog = managed_session
     schema = catalog.get_schema("test", "default")
 
     schema_by_id = catalog.get_schema_by_id(schema.id)
     assert schema_by_id.fqdn == ("test", "default")
 
 
-def test_get_table(save_catalog):
-    catalog = save_catalog
+def test_get_table(managed_session):
+    catalog = managed_session
     table = catalog.get_table("test", "default", "page")
     assert table.fqdn == ("test", "default", "page")
 
 
-def test_get_table_by_id(save_catalog):
-    catalog = save_catalog
+def test_get_table_by_id(managed_session):
+    catalog = managed_session
     table = catalog.get_table("test", "default", "page")
 
     table_by_id = catalog.get_table_by_id(table.id)
@@ -208,15 +220,15 @@ def test_get_table_by_id(save_catalog):
     assert table_by_id.fqdn == ("test", "default", "page")
 
 
-def test_get_table_columns(save_catalog):
-    catalog = save_catalog
+def test_get_table_columns(managed_session):
+    catalog = managed_session
     table = catalog.get_table("test", "default", "page")
     columns = catalog.get_columns_for_table(table)
     assert len(columns) == 3
 
 
-def test_get_column_in(save_catalog):
-    catalog = save_catalog
+def test_get_column_in(managed_session):
+    catalog = managed_session
     table = catalog.get_table("test", "default", "page")
     columns = catalog.get_columns_for_table(
         table=table, column_names=["page_id", "page_latest"]
@@ -227,28 +239,28 @@ def test_get_column_in(save_catalog):
     assert len(columns) == 1
 
 
-def test_get_column(save_catalog):
-    catalog = save_catalog
+def test_get_column(managed_session):
+    catalog = managed_session
     column = catalog.get_column("test", "default", "page", "page_title")
     assert column.fqdn == ("test", "default", "page", "page_title")
 
 
-def test_get_column_by_id(save_catalog):
-    catalog = save_catalog
+def test_get_column_by_id(managed_session):
+    catalog = managed_session
     column = catalog.get_column("test", "default", "page", "page_title")
 
     column_by_id = catalog.get_column_by_id(column.id)
     assert column_by_id.fqdn == ("test", "default", "page", "page_title")
 
 
-def test_search_source(save_catalog):
-    catalog = save_catalog
+def test_search_source(managed_session):
+    catalog = managed_session
     databases = catalog.search_sources("t%")
     assert len(databases) == 1
 
 
-def test_search_schema(save_catalog):
-    catalog = save_catalog
+def test_search_schema(managed_session):
+    catalog = managed_session
     schemata = catalog.search_schema(source_like="test", schema_like="def%")
     assert len(schemata) == 1
 
@@ -256,8 +268,8 @@ def test_search_schema(save_catalog):
     assert len(name_only) == 1
 
 
-def test_search_tables(save_catalog):
-    catalog = save_catalog
+def test_search_tables(managed_session):
+    catalog = managed_session
     tables = catalog.search_tables(
         source_like="test", schema_like="default", table_like="page%"
     )
@@ -267,8 +279,8 @@ def test_search_tables(save_catalog):
     assert len(name_only) == 5
 
 
-def test_search_table(save_catalog):
-    catalog = save_catalog
+def test_search_table(managed_session):
+    catalog = managed_session
     table = catalog.search_table(
         source_like="test", schema_like="default", table_like="pagecount%"
     )
@@ -278,8 +290,8 @@ def test_search_table(save_catalog):
     assert name_only is not None
 
 
-def test_search_table_not_found(save_catalog):
-    catalog = save_catalog
+def test_search_table_not_found(managed_session):
+    catalog = managed_session
     with pytest.raises(RuntimeError):
         catalog.search_table(
             source_like="test", schema_like="default", table_like="blah"
@@ -289,8 +301,8 @@ def test_search_table_not_found(save_catalog):
 #    assert e.str() == "'blah' table not found"
 
 
-def test_search_table_multiple(save_catalog):
-    catalog = save_catalog
+def test_search_table_multiple(managed_session):
+    catalog = managed_session
     with pytest.raises(RuntimeError):
         catalog.search_table(
             source_like="test", schema_like="default", table_like="page%"
@@ -298,8 +310,8 @@ def test_search_table_multiple(save_catalog):
         # assert e == "Ambiguous table name. Multiple matches found"
 
 
-def test_search_column(save_catalog):
-    catalog = save_catalog
+def test_search_column(managed_session):
+    catalog = managed_session
     columns = catalog.search_column(
         source_like="test",
         schema_like="default",
@@ -312,8 +324,8 @@ def test_search_column(save_catalog):
     assert len(name_only) == 3
 
 
-def test_update_default_schema(save_catalog):
-    catalog = save_catalog
+def test_update_default_schema(managed_session):
+    catalog = managed_session
     source = catalog.get_source("test")
     schema = catalog.get_schema("test", "default")
 
@@ -336,10 +348,11 @@ def test_add_sources(open_catalog_connection):
     with open("test/connections.yaml") as f:
         connections = yaml.safe_load(f)
 
-    for c in connections["connections"]:
-        catalog.add_source(**c)
+    with catalog.managed_session:
+        for c in connections["connections"]:
+            catalog.add_source(**c)
 
-    connections = catalog.search_sources(source_like="%")
+        connections = catalog.search_sources(source_like="%")
     assert len(connections) == 6
 
     # pg
@@ -390,76 +403,79 @@ def test_add_sources(open_catalog_connection):
 @pytest.fixture(scope="module")
 def load_job_and_executions(save_catalog):
     catalog = save_catalog
-    source = catalog.get_source("test")
-    job = catalog.add_job(
-        "insert_page_lookup_redirect",
-        source,
-        {
-            "sql": "insert into page_lookup_redirect(page_id, page_version) select page_idm, page_latest from page"
-        },
-    )
-    e1 = catalog.add_job_execution(
-        job=job,
-        started_at=datetime.datetime.combine(
-            datetime.date(2021, 4, 1), datetime.time(1, 0)
-        ),
-        ended_at=datetime.datetime.combine(
-            datetime.date(2021, 4, 1), datetime.time(1, 15)
-        ),
-        status=JobExecutionStatus.SUCCESS,
-    )
-    e2 = catalog.add_job_execution(
-        job=job,
-        started_at=datetime.datetime.combine(
-            datetime.date(2021, 4, 1), datetime.time(2, 0)
-        ),
-        ended_at=datetime.datetime.combine(
-            datetime.date(2021, 4, 1), datetime.time(2, 15)
-        ),
-        status=JobExecutionStatus.FAILURE,
-    )
-    e3 = catalog.add_job_execution(
-        job=job,
-        started_at=datetime.datetime.combine(
-            datetime.date(2021, 5, 1), datetime.time(1, 0)
-        ),
-        ended_at=datetime.datetime.combine(
-            datetime.date(2021, 5, 1), datetime.time(1, 15)
-        ),
-        status=JobExecutionStatus.SUCCESS,
-    )
-    name = job.name
-    executions = [e1.id, e2.id, e3.id]
+    with catalog.managed_session:
+        source = catalog.get_source("test")
+        job = catalog.add_job(
+            "insert_page_lookup_redirect",
+            source,
+            {
+                "sql": "insert into page_lookup_redirect(page_id, page_version) select page_idm, page_latest from page"
+            },
+        )
+        e1 = catalog.add_job_execution(
+            job=job,
+            started_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(1, 0)
+            ),
+            ended_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(1, 15)
+            ),
+            status=JobExecutionStatus.SUCCESS,
+        )
+        e2 = catalog.add_job_execution(
+            job=job,
+            started_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(2, 0)
+            ),
+            ended_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(2, 15)
+            ),
+            status=JobExecutionStatus.FAILURE,
+        )
+        e3 = catalog.add_job_execution(
+            job=job,
+            started_at=datetime.datetime.combine(
+                datetime.date(2021, 5, 1), datetime.time(1, 0)
+            ),
+            ended_at=datetime.datetime.combine(
+                datetime.date(2021, 5, 1), datetime.time(1, 15)
+            ),
+            status=JobExecutionStatus.SUCCESS,
+        )
+        name = job.name
+        executions = [e1.id, e2.id, e3.id]
 
-    print("Inserted job {}".format(name))
-    print("Inserted executions {}".format(",".join(str(v) for v in executions)))
+        print("Inserted job {}".format(name))
+        print("Inserted executions {}".format(",".join(str(v) for v in executions)))
 
     yield catalog, name, executions
 
-    session = catalog.scoped_session
-    session.query(JobExecution).filter(JobExecution.id.in_(executions)).delete(
-        synchronize_session=False
-    )
-    print("DELETED executions {}".format(",".join(str(v) for v in executions)))
-    session.commit()
+    with catalog.managed_session as session:
+        session.query(JobExecution).filter(JobExecution.id.in_(executions)).delete(
+            synchronize_session=False
+        )
+        print("DELETED executions {}".format(",".join(str(v) for v in executions)))
+        session.commit()
 
-    session.query(Job).filter(Job.name == name).delete(synchronize_session=False)
-    print("DELETED job {}".format(name))
-    session.commit()
+        session.query(Job).filter(Job.name == name).delete(synchronize_session=False)
+        print("DELETED job {}".format(name))
+        session.commit()
 
 
 def test_get_job_id(load_job_and_executions):
     catalog, name, executions = load_job_and_executions
-    job = catalog.get_job(name)
+    with catalog.managed_session:
+        job = catalog.get_job(name)
 
-    job_by_id = catalog.get_job_by_id(job.id)
+        job_by_id = catalog.get_job_by_id(job.id)
     assert job_by_id.name == "insert_page_lookup_redirect"
 
 
 def test_add_job_executions(load_job_and_executions):
     catalog, name, executions = load_job_and_executions
-    job = catalog.get_job(name)
-    job_executions = catalog.get_job_executions(job)
+    with catalog.managed_session:
+        job = catalog.get_job(name)
+        job_executions = catalog.get_job_executions(job)
 
     assert job.name == "insert_page_lookup_redirect"
     assert job.context == {
@@ -470,8 +486,9 @@ def test_add_job_executions(load_job_and_executions):
 
 def test_get_latest_job_execution(load_job_and_executions):
     catalog, name, executions = load_job_and_executions
-    job = catalog.get_job(name)
-    latest = catalog.get_latest_job_executions([job.id])
+    with catalog.managed_session:
+        job = catalog.get_job(name)
+        latest = catalog.get_latest_job_executions([job.id])
 
     assert len(latest) == 1
     latest_execution = latest[0]
@@ -482,31 +499,33 @@ def test_get_latest_job_execution(load_job_and_executions):
 
 def load_edges(catalog, expected_edges, job_execution_id):
     column_edge_ids = []
-    for edge in expected_edges:
-        source = catalog.get_column(
-            database_name=edge[0][0],
-            schema_name=edge[0][1],
-            table_name=edge[0][2],
-            column_name=edge[0][3],
-        )
+    with catalog.managed_session:
+        for edge in expected_edges:
+            source = catalog.get_column(
+                database_name=edge[0][0],
+                schema_name=edge[0][1],
+                table_name=edge[0][2],
+                column_name=edge[0][3],
+            )
 
-        target = catalog.get_column(
-            database_name=edge[1][0],
-            schema_name=edge[1][1],
-            table_name=edge[1][2],
-            column_name=edge[1][3],
-        )
+            target = catalog.get_column(
+                database_name=edge[1][0],
+                schema_name=edge[1][1],
+                table_name=edge[1][2],
+                column_name=edge[1][3],
+            )
 
-        added_edge = catalog.add_column_lineage(source, target, job_execution_id, {})
+            added_edge = catalog.add_column_lineage(
+                source, target, job_execution_id, {}
+            )
 
-        column_edge_ids.append(added_edge.id)
+            column_edge_ids.append(added_edge.id)
     return column_edge_ids
 
 
 @pytest.fixture(scope="module")
 def load_page_lookup_nonredirect_edges(save_catalog):
     catalog = save_catalog
-    source = catalog.get_source("test")
     expected_edges = [
         (
             ("test", "default", "page", "page_id"),
@@ -530,24 +549,27 @@ def load_page_lookup_nonredirect_edges(save_catalog):
         ),
     ]
 
-    job = catalog.add_job(
-        "insert_page_lookup_nonredirect",
-        source,
-        {"sql": "insert into page_lookup_nonredirect select from page"},
-    )
-    e1 = catalog.add_job_execution(
-        job=job,
-        started_at=datetime.datetime.combine(
-            datetime.date(2021, 4, 1), datetime.time(1, 0)
-        ),
-        ended_at=datetime.datetime.combine(
-            datetime.date(2021, 4, 1), datetime.time(1, 15)
-        ),
-        status=JobExecutionStatus.SUCCESS,
-    )
+    with catalog.managed_session:
+        source = catalog.get_source("test")
 
-    executions = [e1.id]
-    name = job.name
+        job = catalog.add_job(
+            "insert_page_lookup_nonredirect",
+            source,
+            {"sql": "insert into page_lookup_nonredirect select from page"},
+        )
+        e1 = catalog.add_job_execution(
+            job=job,
+            started_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(1, 0)
+            ),
+            ended_at=datetime.datetime.combine(
+                datetime.date(2021, 4, 1), datetime.time(1, 15)
+            ),
+            status=JobExecutionStatus.SUCCESS,
+        )
+
+        executions = [e1.id]
+        name = job.name
 
     print("Inserted job {}".format(name))
     print("Inserted executions {}".format(",".join(str(v) for v in executions)))
@@ -557,22 +579,22 @@ def load_page_lookup_nonredirect_edges(save_catalog):
 
     yield catalog, expected_edges
 
-    session = catalog.scoped_session
-    session.query(ColumnLineage).filter(ColumnLineage.id.in_(column_edge_ids)).delete(
-        synchronize_session=False
-    )
-    print("DELETED edges {}".format(",".join(str(v) for v in column_edge_ids)))
-    session.commit()
+    with catalog.managed_session as session:
+        session.query(ColumnLineage).filter(
+            ColumnLineage.id.in_(column_edge_ids)
+        ).delete(synchronize_session=False)
+        print("DELETED edges {}".format(",".join(str(v) for v in column_edge_ids)))
+        session.commit()
 
-    session.query(JobExecution).filter(JobExecution.id.in_(executions)).delete(
-        synchronize_session=False
-    )
-    print("DELETED executions {}".format(",".join(str(v) for v in executions)))
-    session.commit()
+        session.query(JobExecution).filter(JobExecution.id.in_(executions)).delete(
+            synchronize_session=False
+        )
+        print("DELETED executions {}".format(",".join(str(v) for v in executions)))
+        session.commit()
 
-    session.query(Job).filter(Job.name == name).delete(synchronize_session=False)
-    print("DELETED job {}".format(name))
-    session.commit()
+        session.query(Job).filter(Job.name == name).delete(synchronize_session=False)
+        print("DELETED job {}".format(name))
+        session.commit()
 
 
 @pytest.fixture(scope="module")
@@ -594,28 +616,29 @@ def insert_page_lookup_redirect(load_job_and_executions):
 
     yield catalog, expected_edges
 
-    session = catalog.scoped_session
-    session.query(ColumnLineage).filter(ColumnLineage.id.in_(column_edge_ids)).delete(
-        synchronize_session=False
-    )
-    session.commit()
-    print("DELETED edges {}".format(",".join(str(v) for v in column_edge_ids)))
+    with catalog.managed_session as session:
+        session.query(ColumnLineage).filter(
+            ColumnLineage.id.in_(column_edge_ids)
+        ).delete(synchronize_session=False)
+        session.commit()
+        print("DELETED edges {}".format(",".join(str(v) for v in column_edge_ids)))
 
 
 def test_add_edge(insert_page_lookup_redirect):
     catalog, expected_edges = insert_page_lookup_redirect
-    session = catalog.scoped_session
-    all_edges = session.query(ColumnLineage).all()
-    assert set([(e.source.fqdn, e.target.fqdn) for e in all_edges]) == set(
-        expected_edges
-    )
+    with catalog.managed_session as session:
+        all_edges = session.query(ColumnLineage).all()
+        assert set([(e.source.fqdn, e.target.fqdn) for e in all_edges]) == set(
+            expected_edges
+        )
 
 
 def test_get_all_edges(load_page_lookup_nonredirect_edges, insert_page_lookup_redirect):
     catalog, expected_nonredirect = load_page_lookup_nonredirect_edges
 
-    edges = catalog.get_column_lineages()
-    assert len(edges) == 7
+    with catalog.managed_session:
+        edges = catalog.get_column_lineages()
+        assert len(edges) == 7
 
 
 def test_get_edges_for_job(
@@ -623,9 +646,10 @@ def test_get_edges_for_job(
 ):
     catalog, expected_nonredirect = load_page_lookup_nonredirect_edges
 
-    job = catalog.get_job("insert_page_lookup_redirect")
-    edges = catalog.get_column_lineages(job_ids=[job.id])
-    assert len(edges) == 2
+    with catalog.managed_session:
+        job = catalog.get_job("insert_page_lookup_redirect")
+        edges = catalog.get_column_lineages(job_ids=[job.id])
+        assert len(edges) == 2
 
 
 def test_get_edges_for_many_jobs(
@@ -633,8 +657,9 @@ def test_get_edges_for_many_jobs(
 ):
     catalog, expected_nonredirect = load_page_lookup_nonredirect_edges
 
-    job_1 = catalog.get_job("insert_page_lookup_redirect")
-    job_2 = catalog.get_job("insert_page_lookup_nonredirect")
+    with catalog.managed_session:
+        job_1 = catalog.get_job("insert_page_lookup_redirect")
+        job_2 = catalog.get_job("insert_page_lookup_nonredirect")
 
-    edges = catalog.get_column_lineages(job_ids=[job_1.id, job_2.id])
-    assert len(edges) == 7
+        edges = catalog.get_column_lineages(job_ids=[job_1.id, job_2.id])
+        assert len(edges) == 7

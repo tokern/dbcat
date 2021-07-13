@@ -1,6 +1,6 @@
 # flake8: noqa
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 
 import logging
 
@@ -27,26 +27,30 @@ def init_db(catalog_obj: Catalog) -> None:
     LOGGER.info("Initializing the database")
 
     config = get_alembic_config(catalog_obj.engine)
+    LOGGER.debug(config)
     command.upgrade(config, "heads")
 
 
 def add_connections(catalog_obj: Catalog, config: str) -> None:
     config_yaml = yaml.safe_load(config)
 
-    for conn in config_yaml["connections"]:
-        LOGGER.info("Adding {}".format(conn))
-        catalog_obj.add_source(**conn)
+    with catalog_obj.managed_session:
+        for conn in config_yaml["connections"]:
+            LOGGER.info("Adding {}".format(conn))
+            catalog_obj.add_source(**conn)
 
 
 def pull(catalog_obj: Catalog, connection_name: str) -> None:
-    source = catalog_obj.get_source(connection_name)
-    LOGGER.debug("Source: {}".format(source))
-    scanner = DbScanner(catalog_obj, source)
-    LOGGER.info("Scanning {}".format(scanner.name))
-    scanner.scan()
+    with catalog_obj.managed_session:
+        source = catalog_obj.get_source(connection_name)
+        LOGGER.debug("Source: {}".format(source))
+        scanner = DbScanner(catalog_obj, source)
+        LOGGER.info("Scanning {}".format(scanner.name))
+        scanner.scan()
 
 
 def pull_all(catalog_obj: Catalog) -> None:
-    for source in catalog_obj.search_sources("%"):
-        LOGGER.info("Starting scan on {}".format(source))
-        pull(catalog_obj, source.name)
+    with catalog_obj.managed_session:
+        for source in catalog_obj.get_sources():
+            LOGGER.info("Starting scan on {}".format(source))
+            pull(catalog_obj, source.name)

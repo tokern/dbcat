@@ -149,6 +149,7 @@ def pull_cli(
 
     catalog_obj = catalog_connection(config)
     try:
+        init_db(catalog_obj)
         add_connections(catalog_obj, config)
         if len(connection_names) == 0:
             pull_all(catalog_obj)
