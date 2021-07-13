@@ -1,11 +1,19 @@
 import logging
 import os
 import shutil
+from contextlib import closing
 from pathlib import Path
 
 import click
 
-from dbcat import __version__, add_connections, catalog_connection, pull, pull_all
+from dbcat import (
+    __version__,
+    add_connections,
+    catalog_connection,
+    init_db,
+    pull,
+    pull_all,
+)
 from dbcat.log_mixin import LogMixin
 
 
@@ -104,6 +112,21 @@ def init(obj, delete):
         config = config_dir / "config"
         with open(config, "w") as f:
             f.write(config_template)
+
+
+@main.command("init_db", help="Initialize the database")
+@click.pass_obj
+def init_db_cli(obj):
+    config_file = obj["config_dir"] / "config"
+    logging.debug("Config file: {}".format(config_file))
+    with open(config_file, "r") as file:
+        config = file.read()
+
+    logging.debug(config)
+
+    catalog_obj = catalog_connection(config)
+    with closing(catalog_obj) as catalog_obj:
+        init_db(catalog_obj)
 
 
 @main.command("pull", help="Scan and load metadata from databases into the catalog")

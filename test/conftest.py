@@ -5,7 +5,7 @@ import pymysql
 import pytest
 import yaml
 
-from dbcat import catalog_connection
+from dbcat import catalog_connection, init_db
 from dbcat.catalog.catalog import Catalog
 
 postgres_conf = """
@@ -61,6 +61,7 @@ catalog:
 @pytest.fixture(scope="session")
 def open_catalog_connection(setup_catalog):
     with closing(catalog_connection(catalog_conf)) as conn:
+        init_db(conn)
         yield conn
 
 

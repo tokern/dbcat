@@ -57,7 +57,6 @@ class Catalog(LogMixin):
     @property
     def scoped_session(self) -> scoped_session:
         if self._scoped_session is None:
-            Base.metadata.create_all(self.engine)
             self._scoped_session = scoped_session(sessionmaker(bind=self.engine))
 
         return self._scoped_session
@@ -258,7 +257,7 @@ class Catalog(LogMixin):
         query = (
             session.query(JobExecution.id)
             .filter(JobExecution.job_id.in_(job_ids))
-            .add_column(row_number_column)
+            .add_columns(row_number_column)
             .from_self()
             .filter(row_number_column == 1)
         )
