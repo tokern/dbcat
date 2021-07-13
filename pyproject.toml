@@ -27,6 +27,7 @@ click = "*"
 PyYAML = "*"
 amundsen-databuilder = {extras = ["athena", "bigquery", "glue", "rds", "snowflake"], version = "^5.2.0"}
 psycopg2 = "^2.9.1"
+alembic = "^1.6.5"
 
 [tool.poetry.dev-dependencies]
 black = "==19.10b0"
