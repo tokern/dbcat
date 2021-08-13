@@ -8,6 +8,7 @@ import yaml
 from alembic import command
 
 from dbcat.catalog import Catalog
+from dbcat.catalog.catalog import PGCatalog, SqliteCatalog
 from dbcat.catalog.db import DbScanner
 from dbcat.log_mixin import LogMixin
 from dbcat.migrations import get_alembic_config
@@ -17,7 +18,10 @@ LOGGER = logging.getLogger(__name__)
 
 def catalog_connection(config: str) -> Catalog:
     config_yaml = yaml.safe_load(config)
-    return Catalog(**config_yaml["catalog"])
+    if "path" in config_yaml["catalog"]:
+        return SqliteCatalog(**config_yaml["catalog"])
+    else:
+        return PGCatalog(**config_yaml["catalog"])
 
 
 def init_db(catalog_obj: Catalog) -> None:

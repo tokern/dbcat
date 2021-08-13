@@ -25,12 +25,7 @@ def run_asserts(catalog, connection_name):
 
 
 connection_config = """
-catalog:
-  user: catalog_user
-  password: catal0g_passw0rd
-  host: 127.0.0.1
-  port: 5432
-  database: tokern
+{catalog_conf}
 connections:
   - name: pg_{test_name}
     source_type: postgresql
@@ -48,17 +43,16 @@ connections:
 
 
 @pytest.fixture
-def config_path(tmp_path_factory, request):
+def config_path(tmp_path_factory, request, load_all_data, open_catalog_connection):
+    catalog, conf = open_catalog_connection
+
     config_dir = tmp_path_factory.mktemp(request.node.name)
     config_file = config_dir / "config"
-    config_file.write_text(connection_config.format(test_name=request.node.name))
-    yield config_dir, request.node.name
+    config_file.write_text(
+        connection_config.format(test_name=request.node.name, catalog_conf=conf)
+    )
+    yield catalog, config_dir, request.node.name
 
-
-@pytest.fixture
-def clean_catalog(load_all_data, open_catalog_connection, request):
-    catalog = open_catalog_connection
-    yield catalog
     with catalog.managed_session as session:
         logging.debug("Starting clean up of catalog")
         [
@@ -69,9 +63,8 @@ def clean_catalog(load_all_data, open_catalog_connection, request):
         ]
 
 
-def test_cli_all(clean_catalog, config_path):
-    catalog = clean_catalog
-    config_path, suffix = config_path
+def test_cli_all(config_path):
+    catalog, config_path, suffix = config_path
 
     runner = CliRunner()
     result = runner.invoke(main, ["--config-dir", config_path, "pull"])
@@ -82,9 +75,8 @@ def test_cli_all(clean_catalog, config_path):
 
 
 @pytest.mark.parametrize("source", ["pg", "mysql"])
-def test_cli_connection(clean_catalog, config_path, source):
-    catalog = clean_catalog
-    config_path, suffix = config_path
+def test_cli_connection(config_path, source):
+    catalog, config_path, suffix = config_path
     connection_name = "{}_{}".format(source, suffix)
 
     runner = CliRunner()

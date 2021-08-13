@@ -6,7 +6,7 @@ from dbcat.catalog.models import CatSource
 
 @pytest.fixture(scope="module")
 def setup_catalog_and_data(load_all_data, open_catalog_connection):
-    catalog = open_catalog_connection
+    catalog, conf = open_catalog_connection
     with catalog.managed_session:
         catalog.add_source(
             name="mysql",

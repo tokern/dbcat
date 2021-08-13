@@ -174,7 +174,7 @@ class DbScanner:
     @staticmethod
     def _create_postgres_extractor(source: CatSource) -> Tuple[Extractor, Any]:
         where_clause_suffix = """
-            WHERE TABLE_SCHEMA NOT IN ('information_schema', 'pg_catalog')
+            st.schemaname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
         """
         return DbScanner._create_sqlalchemy_extractor(
             source, where_clause_suffix, PostgresMetadataExtractor
