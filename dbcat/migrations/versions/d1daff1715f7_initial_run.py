@@ -7,7 +7,7 @@ Create Date: 2021-07-13 18:50:29.689178
 """
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
+from sqlalchemy import JSON
 
 # revision identifiers, used by Alembic.
 revision = "d1daff1715f7"
@@ -47,7 +47,7 @@ def upgrade():
         "jobs",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(), nullable=True),
-        sa.Column("context", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("context", JSON, nullable=True),
         sa.Column("source_id", sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(["source_id"], ["sources.id"],),
         sa.PrimaryKeyConstraint("id"),
@@ -108,7 +108,7 @@ def upgrade():
     op.create_table(
         "column_lineage",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("context", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("context", JSON, nullable=True),
         sa.Column("source_id", sa.Integer(), nullable=True),
         sa.Column("target_id", sa.Integer(), nullable=True),
         sa.Column("job_execution_id", sa.Integer(), nullable=True),

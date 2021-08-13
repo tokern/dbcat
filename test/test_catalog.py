@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 import pytest
 import yaml
@@ -14,6 +15,8 @@ from dbcat.catalog.models import (
     JobExecution,
     JobExecutionStatus,
 )
+
+logger = logging.getLogger("dbcat.test")
 
 
 class File:
@@ -44,7 +47,6 @@ class File:
 
                     index = 0
                     for c in t["columns"]:
-                        print(c)
                         self._catalog.add_column(
                             column_name=c["name"],
                             data_type=c["data_type"],
@@ -54,14 +56,18 @@ class File:
                         index += 1
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def save_catalog(open_catalog_connection):
-    catalog = open_catalog_connection
+    catalog, conf = open_catalog_connection
     scanner = File("test", "test/catalog.json", catalog)
     scanner.scan()
     yield catalog
+    logging.debug("Deleting catalog loaded from file.")
     with catalog.managed_session as session:
         [session.delete(db) for db in session.query(CatSource).all()]
+        [session.delete(schema) for schema in session.query(CatSchema).all()]
+        [session.delete(table) for table in session.query(CatTable).all()]
+        [session.delete(col) for col in session.query(CatColumn).all()]
         session.commit()
 
 
@@ -79,17 +85,17 @@ def test_sqlalchemy_root(root_connection):
         conn.execute("select 1")
 
 
-def test_catalog_tables(open_catalog_connection: Catalog):
-    with open_catalog_connection.managed_session as session:
-
+def test_catalog_tables(open_catalog_connection):
+    catalog, conf = open_catalog_connection
+    with catalog.managed_session as session:
         assert len(session.query(CatSource).all()) == 0
         assert len(session.query(CatSchema).all()) == 0
         assert len(session.query(CatTable).all()) == 0
         assert len(session.query(CatColumn).all()) == 0
 
 
-def test_read_catalog(managed_session):
-    catalog = managed_session
+def test_read_catalog(save_catalog):
+    catalog = save_catalog
 
     with catalog.managed_session as session:
         dbs = session.query(CatSource).all()
@@ -170,10 +176,11 @@ def test_update_catalog(managed_session):
         assert group_col.data_type == "BIGINT"
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="package")
 def managed_session(save_catalog):
-    with save_catalog.managed_session:
-        yield save_catalog
+    catalog = save_catalog
+    with catalog.managed_session:
+        yield catalog
 
 
 def test_get_source(managed_session):
@@ -344,7 +351,7 @@ def test_update_default_schema(managed_session):
 
 
 def test_add_sources(open_catalog_connection):
-    catalog = open_catalog_connection
+    catalog, conf = open_catalog_connection
     with open("test/connections.yaml") as f:
         connections = yaml.safe_load(f)
 
@@ -353,10 +360,10 @@ def test_add_sources(open_catalog_connection):
             catalog.add_source(**c)
 
         connections = catalog.search_sources(source_like="%")
-    assert len(connections) == 6
+    assert len(connections) == 5
 
     # pg
-    pg_connection = connections[1]
+    pg_connection = connections[0]
     assert pg_connection.name == "pg"
     assert pg_connection.source_type == "postgres"
     assert pg_connection.database == "db_database"
@@ -366,7 +373,7 @@ def test_add_sources(open_catalog_connection):
     assert pg_connection.uri == "db_uri"
 
     # mysql
-    mysql_conn = connections[2]
+    mysql_conn = connections[1]
     assert mysql_conn.name == "mys"
     assert mysql_conn.source_type == "mysql"
     assert mysql_conn.database == "db_database"
@@ -376,7 +383,7 @@ def test_add_sources(open_catalog_connection):
     assert mysql_conn.uri == "db_uri"
 
     # bigquery
-    bq_conn = connections[3]
+    bq_conn = connections[2]
     assert bq_conn.name == "bq"
     assert bq_conn.source_type == "bigquery"
     assert bq_conn.key_path == "db_key_path"
@@ -384,12 +391,12 @@ def test_add_sources(open_catalog_connection):
     assert bq_conn.project_id == "db_project_id"
 
     # glue
-    glue_conn = connections[4]
+    glue_conn = connections[3]
     assert glue_conn.name == "gl"
     assert glue_conn.source_type == "glue"
 
     # snowflake
-    sf_conn = connections[5]
+    sf_conn = connections[4]
     assert sf_conn.name == "sf"
     assert sf_conn.source_type == "snowflake"
     assert sf_conn.database == "db_database"

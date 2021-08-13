@@ -1,4 +1,6 @@
 import datetime
+import logging
+from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
@@ -18,43 +20,21 @@ from dbcat.catalog.models import (
     JobExecution,
     JobExecutionStatus,
 )
-from dbcat.log_mixin import LogMixin
+
+logger = logging.getLogger("dbcat.Catalog")
 
 
-class Catalog(LogMixin):
-    def __init__(
-        self,
-        user: str,
-        password: str,
-        database: str,
-        host: str,
-        port: str = None,
-        **kwargs
-    ):
-        self.user: str = user
-        self.password: str = password
-        self.host: str = host
-        self.port: int = int(port) if port is not None else 5432
-        self.database: str = database
+class Catalog(ABC):
+    def __init__(self, **kwargs):
         self._engine: object = None
         self._scoped_session = None
         self._connection_args = kwargs
         self._current_session: scoped_session = None
 
     @property
+    @abstractmethod
     def engine(self) -> object:
-        if self._engine is None:
-            self._engine = create_engine(
-                "postgresql://{user}:{password}@{host}:{port}/{database}".format(
-                    user=self.user,
-                    password=self.password,
-                    host=self.host,
-                    port=self.port,
-                    database=self.database,
-                ),
-                **self._connection_args
-            )
-        return self._engine
+        pass
 
     def get_scoped_session(self) -> scoped_session:
         if self._scoped_session is None:
@@ -71,13 +51,13 @@ class Catalog(LogMixin):
 
         try:
             self._current_session = self.get_scoped_session()
-            self.logger.debug(
+            logger.debug(
                 "Started new managed session: {}".format(self._current_session)
             )
             yield self._current_session
         finally:
             if self._current_session is not None:
-                self.logger.debug(
+                logger.debug(
                     "Removed managed session: {}".format(self._current_session)
                 )
                 self._current_session.remove()
@@ -286,9 +266,7 @@ class Catalog(LogMixin):
             .from_self()
             .filter(row_number_column == 1)
         )
-        query = query.from_self(JobExecution.id)
-        print(query)
-        return query
+        return query.from_self(JobExecution.id)
 
     def get_latest_job_executions(self, job_ids: List[int]) -> List[JobExecution]:
         return (
@@ -306,7 +284,7 @@ class Catalog(LogMixin):
     def get_column_lineages(self, job_ids: List[int] = None) -> List[ColumnLineage]:
         query = self._current_session.query(ColumnLineage)
         if job_ids is not None and len(job_ids) > 0:
-            self.logger.debug(
+            logger.debug(
                 "Search for lineages from [{}]".format(
                     ",".join(str(v) for v in job_ids)
                 )
@@ -319,7 +297,7 @@ class Catalog(LogMixin):
                 )
             )
         else:
-            self.logger.debug("No job ids provided. Return all edges")
+            logger.debug("No job ids provided. Return all edges")
         return query.all()
 
     def get_sources(self) -> List[CatSource]:
@@ -339,7 +317,7 @@ class Catalog(LogMixin):
         if source_like is not None:
             stmt = stmt.join(CatSchema.source).filter(CatSource.name.like(source_like))
         stmt = stmt.filter(CatSchema.name.like(schema_like))
-        self.logger.debug(str(stmt))
+        logger.debug(str(stmt))
         return stmt.all()
 
     def search_tables(
@@ -357,7 +335,7 @@ class Catalog(LogMixin):
             stmt = stmt.filter(CatSchema.name.like(schema_like))
 
         stmt = stmt.filter(CatTable.name.like(table_like))
-        self.logger.debug(str(stmt))
+        logger.debug(str(stmt))
         return stmt.all()
 
     def search_table(
@@ -404,3 +382,51 @@ class Catalog(LogMixin):
         return self._create(
             DefaultSchema, source_id=source.id, schema_id=default_schema.id
         )
+
+
+class PGCatalog(Catalog):
+    def __init__(
+        self,
+        user: str,
+        password: str,
+        database: str,
+        host: str,
+        port: str = None,
+        **kwargs
+    ):
+        super(PGCatalog, self).__init__(**kwargs)
+        self.user: str = user
+        self.password: str = password
+        self.host: str = host
+        self.port: int = int(port) if port is not None else 5432
+        self.database: str = database
+
+    @property
+    def engine(self) -> object:
+        if self._engine is None:
+            self._engine = create_engine(
+                "postgresql://{user}:{password}@{host}:{port}/{database}".format(
+                    user=self.user,
+                    password=self.password,
+                    host=self.host,
+                    port=self.port,
+                    database=self.database,
+                ),
+                **self._connection_args
+            )
+        return self._engine
+
+
+class SqliteCatalog(Catalog):
+    def __init__(self, path: str, **kwargs):
+        super(SqliteCatalog, self).__init__(**kwargs)
+        self.path: str = path
+
+    @property
+    def engine(self) -> object:
+        if self._engine is None:
+            logger.debug("SQLite path: {}".format(self.path))
+            self._engine = create_engine(
+                "sqlite:///{path}".format(path=self.path), **self._connection_args
+            )
+        return self._engine
