@@ -19,6 +19,7 @@ from dbcat.catalog.models import (
     Job,
     JobExecution,
     JobExecutionStatus,
+    PiiTypes,
 )
 
 logger = logging.getLogger("dbcat.Catalog")
@@ -189,14 +190,14 @@ class Catalog(ABC):
         return stmt.all()
 
     def get_column(
-        self, database_name: str, schema_name: str, table_name: str, column_name: str
+        self, source_name: str, schema_name: str, table_name: str, column_name: str
     ) -> CatColumn:
         return (
             self._current_session.query(CatColumn)
             .join(CatColumn.table)
             .join(CatTable.schema)
             .join(CatSchema.source)
-            .filter(CatSource.name == database_name)
+            .filter(CatSource.name == source_name)
             .filter(CatSchema.name == schema_name)
             .filter(CatTable.name == table_name)
             .filter(CatColumn.name == column_name)
@@ -382,6 +383,10 @@ class Catalog(ABC):
         return self._create(
             DefaultSchema, source_id=source.id, schema_id=default_schema.id
         )
+
+    def set_column_pii_type(self, column: CatColumn, pii_type: PiiTypes):
+        column.pii_type = pii_type
+        self._current_session.commit()
 
 
 class PGCatalog(Catalog):
