@@ -14,6 +14,7 @@ from dbcat.catalog.models import (
     Job,
     JobExecution,
     JobExecutionStatus,
+    PiiTypes,
 )
 
 logger = logging.getLogger("dbcat.test")
@@ -350,6 +351,17 @@ def test_update_default_schema(managed_session):
     assert default_schema.source == source
 
 
+def test_update_column_pii_type(managed_session):
+    catalog = managed_session
+    column = catalog.get_column("test", "default", "page", "page_title")
+
+    pii_type: PiiTypes = PiiTypes.PHONE
+    catalog.set_column_pii_type(column, pii_type)
+
+    updated_column = catalog.get_column("test", "default", "page", "page_title")
+    assert updated_column.pii_type == pii_type
+
+
 def test_add_sources(open_catalog_connection):
     catalog, conf = open_catalog_connection
     with open("test/connections.yaml") as f:
@@ -509,14 +521,14 @@ def load_edges(catalog, expected_edges, job_execution_id):
     with catalog.managed_session:
         for edge in expected_edges:
             source = catalog.get_column(
-                database_name=edge[0][0],
+                source_name=edge[0][0],
                 schema_name=edge[0][1],
                 table_name=edge[0][2],
                 column_name=edge[0][3],
             )
 
             target = catalog.get_column(
-                database_name=edge[1][0],
+                source_name=edge[1][0],
                 schema_name=edge[1][1],
                 table_name=edge[1][2],
                 column_name=edge[1][3],

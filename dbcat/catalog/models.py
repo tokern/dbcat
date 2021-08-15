@@ -1,8 +1,10 @@
 import enum
 from typing import Optional
 
+import sqlalchemy
 from snowflake.sqlalchemy import URL
 from sqlalchemy import (
+    JSON,
     TIMESTAMP,
     Column,
     Enum,
@@ -11,7 +13,6 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm import relationship
 
@@ -208,6 +209,27 @@ class CatTable(Base):
         return hash(self.fqdn)
 
 
+@enum.unique
+class PiiTypes(enum.Enum):
+    """PiiTypes enumerates the different types of PII data"""
+
+    NONE = enum.auto()
+    UNSUPPORTED = enum.auto()
+    PHONE = enum.auto()
+    EMAIL = enum.auto()
+    CREDIT_CARD = enum.auto()
+    ADDRESS = enum.auto()
+    PERSON = enum.auto()
+    LOCATION = enum.auto()
+    BIRTH_DATE = enum.auto()
+    GENDER = enum.auto()
+    NATIONALITY = enum.auto()
+    IP_ADDRESS = enum.auto()
+    SSN = enum.auto()
+    USER_NAME = enum.auto()
+    PASSWORD = enum.auto()
+
+
 class CatColumn(Base):
     __tablename__ = "columns"
 
@@ -215,6 +237,7 @@ class CatColumn(Base):
     name = Column(String)
     data_type = Column(String)
     sort_order = Column(Integer)
+    pii_type = Column(sqlalchemy.types.Enum(PiiTypes))
     table_id = Column(Integer, ForeignKey("tables.id"))
     table = relationship("CatTable", back_populates="columns", lazy="joined")
 
@@ -271,7 +294,7 @@ class Job(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
-    context = Column(JSONB)
+    context = Column(JSON)
     source_id = Column(Integer, ForeignKey("sources.id"))
     source = relationship("CatSource", back_populates="jobs")
 
@@ -308,7 +331,7 @@ class ColumnLineage(Base):
     __tablename__ = "column_lineage"
 
     id = Column(Integer, primary_key=True)
-    context = Column(JSONB)
+    context = Column(JSON)
 
     source_id = Column(Integer, ForeignKey("columns.id"))
     target_id = Column(Integer, ForeignKey("columns.id"))

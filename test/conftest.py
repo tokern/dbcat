@@ -137,21 +137,6 @@ def pg_conn():
     )
 
 
-@pytest.fixture(params=[mysql_conn(), pg_conn()])
-def load_data(request):
-    db_conn, expected_schema = request.param
-    with closing(db_conn) as conn:
-        with conn.cursor() as cursor:
-            for statement in pii_data_load:
-                cursor.execute(statement)
-            cursor.execute("commit")
-        yield conn, expected_schema
-        with conn.cursor() as cursor:
-            for statement in pii_data_drop:
-                cursor.execute(statement)
-            cursor.execute("commit")
-
-
 @pytest.fixture(scope="session")
 def load_all_data():
     params = [mysql_conn(), pg_conn()]
