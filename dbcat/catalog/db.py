@@ -106,7 +106,7 @@ class DbScanner:
             {
                 conn_string_key: source.conn_string,
                 f"{scope}.{extractorClass.CLUSTER_KEY}": source.cluster,
-                f"{scope}.{extractorClass.DATABASE_KEY}": source.name,
+                f"{scope}.{extractorClass.DATABASE_KEY}": source.database,
                 f"{scope}.{extractorClass.WHERE_CLAUSE_SUFFIX_KEY}": where_clause_suffix,
             }
         )
@@ -164,7 +164,7 @@ class DbScanner:
             {
                 conn_string_key: source.conn_string,
                 f"{scope}.{MysqlMetadataExtractor.CLUSTER_KEY}": source.cluster,
-                f"{scope}.{MysqlMetadataExtractor.DATABASE_KEY}": source.name,
+                f"{scope}.{MysqlMetadataExtractor.DATABASE_KEY}": source.database,
                 f"{scope}.{MysqlMetadataExtractor.WHERE_CLAUSE_SUFFIX_KEY}": where_clause_suffix,
             }
         )
@@ -201,7 +201,8 @@ class DbScanner:
             {
                 conn_string_key: source.conn_string,
                 f"{scope}.{SnowflakeMetadataExtractor.CLUSTER_KEY}": source.cluster,
-                f"{scope}.{SnowflakeMetadataExtractor.DATABASE_KEY}": source.name,
+                f"{scope}.{SnowflakeMetadataExtractor.DATABASE_KEY}": source.database,
+                f"{scope}.{SnowflakeMetadataExtractor.SNOWFLAKE_DATABASE_KEY}": source.database,
                 # f"{scope}.{SnowflakeMetadataExtractor.WHERE_CLAUSE_SUFFIX_KEY}": connection.where_clause_suffix,
             }
         )
