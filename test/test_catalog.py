@@ -1,5 +1,6 @@
 import datetime
 import logging
+import time
 
 import pytest
 import yaml
@@ -704,3 +705,44 @@ def test_get_edges_for_many_jobs(
 
         edges = catalog.get_column_lineages(job_ids=[job_1.id, job_2.id])
         assert len(edges) == 7
+
+
+def test_add_task(save_catalog: Catalog):
+    catalog = save_catalog
+
+    with catalog.managed_session:
+        task = catalog.add_task("piicatcher", 0, "Database scanned")
+        id = task.id
+
+    with catalog.managed_session:
+        task_get = catalog.get_task_by_id(id)
+        assert task_get.app_name == "piicatcher"
+        assert task_get.status == 0
+        assert task_get.message == "Database scanned"
+
+
+def test_get_tasks(save_catalog: Catalog):
+    catalog = save_catalog
+
+    with catalog.managed_session:
+        catalog.add_task("piicatcher", 0, "Database scanned again")
+        catalog.add_task("piicatcher", 0, "Database scanned thrice")
+
+    with catalog.managed_session:
+        tasks = catalog.get_tasks_by_app_name("piicatcher")
+        assert len(tasks) >= 2
+
+
+def test_get_latest_task(save_catalog: Catalog):
+    catalog = save_catalog
+    with catalog.managed_session:
+        catalog.add_task("piicatcher_latest", 0, "Run 1")
+        time.sleep(1)
+        catalog.add_task("piicatcher_latest", 0, "Run 2")
+        time.sleep(1)
+        catalog.add_task("piicatcher_latest", 0, "Run 3")
+
+    with catalog.managed_session:
+        latest = catalog.get_latest_task("piicatcher_latest")
+        assert latest.app_name == "piicatcher_latest"
+        assert latest.message == "Run 3"
