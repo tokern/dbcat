@@ -15,11 +15,19 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm import relationship
+from sqlalchemy_mixins.repr import ReprMixin
+from sqlalchemy_mixins.serialize import SerializeMixin
+from sqlalchemy_mixins.timestamp import TimestampsMixin
 
 Base: DeclarativeMeta = declarative_base()
 
 
-class CatSource(Base):
+class BaseModel(Base, ReprMixin, SerializeMixin, TimestampsMixin):
+    __abstract__ = True
+    pass
+
+
+class CatSource(BaseModel):
     __tablename__ = "sources"
 
     id = Column(Integer, primary_key=True)
@@ -146,7 +154,7 @@ class CatSource(Base):
         return hash(self.fqdn)
 
 
-class CatSchema(Base):
+class CatSchema(BaseModel):
     __tablename__ = "schemata"
 
     id = Column(Integer, primary_key=True)
@@ -171,7 +179,7 @@ class CatSchema(Base):
         return hash(self.fqdn)
 
 
-class DefaultSchema(Base):
+class DefaultSchema(BaseModel):
     __tablename__ = "default_schema"
 
     source_id = Column(Integer, ForeignKey("sources.id"), primary_key=True)
@@ -180,7 +188,7 @@ class DefaultSchema(Base):
     source = relationship("CatSource", back_populates="default_schema")
 
 
-class CatTable(Base):
+class CatTable(BaseModel):
     __tablename__ = "tables"
 
     id = Column(Integer, primary_key=True)
@@ -230,7 +238,7 @@ class PiiTypes(enum.Enum):
     PASSWORD = enum.auto()
 
 
-class CatColumn(Base):
+class CatColumn(BaseModel):
     __tablename__ = "columns"
 
     id = Column(Integer, primary_key=True)
@@ -289,7 +297,7 @@ class CatColumn(Base):
         return hash(self.fqdn)
 
 
-class Job(Base):
+class Job(BaseModel):
     __tablename__ = "jobs"
 
     id = Column(Integer, primary_key=True)
@@ -309,7 +317,7 @@ class JobExecutionStatus(enum.Enum):
     FAILURE = 2
 
 
-class JobExecution(Base):
+class JobExecution(BaseModel):
     __tablename__ = "job_executions"
 
     id = Column(Integer, primary_key=True)
@@ -327,7 +335,7 @@ class JobExecution(Base):
         )
 
 
-class ColumnLineage(Base):
+class ColumnLineage(BaseModel):
     __tablename__ = "column_lineage"
 
     id = Column(Integer, primary_key=True)

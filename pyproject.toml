@@ -29,6 +29,7 @@ amundsen-databuilder = {extras = ["athena", "bigquery", "glue", "rds", "snowflak
 psycopg2 = "^2.9.1"
 alembic = "^1.6.5"
 snowflake-sqlalchemy = "1.2.4"
+sqlalchemy-mixins = "^1.5"
 
 [tool.poetry.dev-dependencies]
 black = "==19.10b0"

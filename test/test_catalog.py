@@ -103,9 +103,13 @@ def test_read_catalog(save_catalog):
         assert len(dbs) == 1
         db = dbs[0]
         assert db.name == "test"
+        assert db.created_at is not None
+        assert db.updated_at is not None
 
         assert len(db.schemata) == 1
         schema = db.schemata[0]
+        assert schema.created_at is not None
+        assert schema.updated_at is not None
 
         assert schema.name == "default"
         assert len(schema.tables) == 8
@@ -119,32 +123,44 @@ def test_read_catalog(save_catalog):
         table = tables[0]
         assert table is not None
         assert table.name == "normalized_pagecounts"
+        assert table.created_at is not None
+        assert table.updated_at is not None
         assert len(table.columns) == 5
 
         page_id_column = table.columns[0]
         assert page_id_column.name == "page_id"
         assert page_id_column.data_type == "BIGINT"
         assert page_id_column.sort_order == 0
+        assert page_id_column.created_at is not None
+        assert page_id_column.updated_at is not None
 
         page_title_column = table.columns[1]
         assert page_title_column.name == "page_title"
         assert page_title_column.data_type == "STRING"
         assert page_title_column.sort_order == 1
+        assert page_title_column.created_at is not None
+        assert page_title_column.updated_at is not None
 
         page_url_column = table.columns[2]
         assert page_url_column.name == "page_url"
         assert page_url_column.data_type == "STRING"
         assert page_url_column.sort_order == 2
+        assert page_url_column.created_at is not None
+        assert page_url_column.updated_at is not None
 
         views_column = table.columns[3]
         assert views_column.name == "views"
         assert views_column.data_type == "BIGINT"
         assert views_column.sort_order == 3
+        assert views_column.created_at is not None
+        assert views_column.updated_at is not None
 
         bytes_sent_column = table.columns[4]
         assert bytes_sent_column.name == "bytes_sent"
         assert bytes_sent_column.data_type == "BIGINT"
         assert bytes_sent_column.sort_order == 4
+        assert bytes_sent_column.created_at is not None
+        assert bytes_sent_column.updated_at is not None
 
 
 @pytest.mark.skip
@@ -349,6 +365,7 @@ def test_update_default_schema(managed_session):
     assert default_schema.schema_id == schema.id
     assert default_schema.schema == schema
     assert default_schema.source == source
+    assert default_schema.updated_at >= default_schema.created_at
 
 
 def test_update_column_pii_type(managed_session):
@@ -360,6 +377,7 @@ def test_update_column_pii_type(managed_session):
 
     updated_column = catalog.get_column("test", "default", "page", "page_title")
     assert updated_column.pii_type == pii_type
+    assert updated_column.updated_at >= updated_column.created_at
 
 
 def test_add_sources(open_catalog_connection):
@@ -488,6 +506,8 @@ def test_get_job_id(load_job_and_executions):
 
         job_by_id = catalog.get_job_by_id(job.id)
     assert job_by_id.name == "insert_page_lookup_redirect"
+    assert job_by_id.created_at is not None
+    assert job_by_id.updated_at is not None
 
 
 def test_add_job_executions(load_job_and_executions):
@@ -514,6 +534,8 @@ def test_get_latest_job_execution(load_job_and_executions):
     assert latest_execution.started_at == datetime.datetime.combine(
         datetime.date(2021, 5, 1), datetime.time(1, 0)
     )
+    assert latest_execution.created_at is not None
+    assert latest_execution.updated_at is not None
 
 
 def load_edges(catalog, expected_edges, job_execution_id):
