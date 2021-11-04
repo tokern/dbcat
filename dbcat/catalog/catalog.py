@@ -20,6 +20,7 @@ from dbcat.catalog.models import (
     JobExecution,
     JobExecutionStatus,
     PiiTypes,
+    Task,
 )
 
 logger = logging.getLogger("dbcat.Catalog")
@@ -140,6 +141,11 @@ class Catalog(ABC):
             target_id=target.id,
             job_execution_id=job_execution_id,
             create_method_kwargs={"context": context},
+        )
+
+    def add_task(self, app_name: str, status: int, message: str) -> Task:
+        return self._create(
+            model=Task, app_name=app_name, status=status, message=message
         )
 
     def get_source(self, source_name: str) -> CatSource:
@@ -303,6 +309,26 @@ class Catalog(ABC):
 
     def get_sources(self) -> List[CatSource]:
         return self._current_session.query(CatSource).all()
+
+    def get_task_by_id(self, task_id: int) -> Task:
+        return self._current_session.query(Task).filter(Task.id == task_id).one()
+
+    def get_tasks_by_app_name(self, app_name: str) -> List[Task]:
+        return (
+            self._current_session.query(Task)
+            .filter(Task.app_name == app_name)
+            .order_by(Task.updated_at)
+            .all()
+        )
+
+    def get_latest_task(self, app_name: str) -> Task:
+        return (
+            self._current_session.query(Task)
+            .filter(Task.app_name == app_name)
+            .order_by(Task.updated_at.desc())
+            .limit(1)
+            .one_or_none()
+        )
 
     def search_sources(self, source_like: str) -> List[CatSource]:
         return (

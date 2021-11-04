@@ -361,3 +361,12 @@ class ColumnLineage(BaseModel):
         return "<Edge: {} -> {} by {}. payload: {}>".format(
             self.source, self.target, self.job_execution, self.context
         )
+
+
+class Task(BaseModel):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True)
+    app_name = Column(String)
+    status = Column(Integer)
+    message = Column(String)
