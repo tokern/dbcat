@@ -21,6 +21,7 @@ from pyhocon import ConfigFactory, ConfigTree
 
 from dbcat.catalog.catalog import Catalog
 from dbcat.catalog.models import CatSource
+from dbcat.catalog.sqlite_extractor import SqliteMetadataExtractor
 
 
 class DbScanner:
@@ -42,6 +43,8 @@ class DbScanner:
             self._extractor, self._conf = DbScanner._create_redshift_extractor(source)
         elif source.source_type == "snowflake":
             self._extractor, self._conf = DbScanner._create_snowflake_extractors(source)
+        elif source.source_type == "sqlite":
+            self._extractor, self._conf = DbScanner._create_sqlite_extractor(source)
         else:
             raise ValueError("{} is not supported".format(source.source_type))
 
@@ -204,6 +207,22 @@ class DbScanner:
                 f"{scope}.{SnowflakeMetadataExtractor.DATABASE_KEY}": source.database,
                 f"{scope}.{SnowflakeMetadataExtractor.SNOWFLAKE_DATABASE_KEY}": source.database,
                 # f"{scope}.{SnowflakeMetadataExtractor.WHERE_CLAUSE_SUFFIX_KEY}": connection.where_clause_suffix,
+            }
+        )
+
+        return extractor, conf
+
+    @staticmethod
+    def _create_sqlite_extractor(
+        source: CatSource,
+    ) -> Tuple[SqliteMetadataExtractor, Any]:
+        extractor = SqliteMetadataExtractor()
+        scope = extractor.get_scope()
+        conn_string_key = f"{scope}.{SQLAlchemyExtractor().get_scope()}.{SQLAlchemyExtractor.CONN_STRING}"
+        conf = ConfigFactory.from_dict(
+            {
+                conn_string_key: source.conn_string,
+                f"{scope}.{SqliteMetadataExtractor.CLUSTER_KEY}": source.name,
             }
         )
 
