@@ -119,6 +119,8 @@ class CatSource(BaseModel):
                 warehouse=self.warehouse,
                 role=self.role,
             )
+        elif self.source_type == "sqlite":
+            conn_string = "sqlite:///{}".format(self.uri)
         else:
             username_password_placeholder = (
                 f"{self.username}:{self.password}" if self.password is not None else ""

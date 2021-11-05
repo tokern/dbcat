@@ -1,4 +1,7 @@
+import logging
+import sqlite3
 from contextlib import closing
+from shutil import rmtree
 
 import psycopg2
 import pymysql
@@ -34,7 +37,7 @@ catalog:
 
 @pytest.fixture(scope="session")
 def setup_sqlite(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("sqlite_test")
+    temp_dir = tmpdir_factory.mktemp("sqlite_catalog")
     sqlite_path = temp_dir.join("sqldb")
 
     yield None, sqlite_catalog_conf.format(path=sqlite_path)
@@ -88,22 +91,6 @@ def open_catalog_connection(setup_catalog):
         yield conn, conf
 
 
-pii_data_script = """
-create table no_pii(a text, b text);
-insert into no_pii values ('abc', 'def');
-insert into no_pii values ('xsfr', 'asawe');
-
-create table partial_pii(a text, b text);
-insert into partial_pii values ('917-908-2234', 'plkj');
-insert into partial_pii values ('215-099-2234', 'sfrf');
-
-create table full_pii(name text, location text);
-insert into full_pii values ('Jonathan Smith', 'Virginia');
-insert into full_pii values ('Chase Ryan', 'Chennai');
-
-"""
-
-
 pii_data_load = [
     "create table no_pii(a text, b text)",
     "insert into no_pii values ('abc', 'def')",
@@ -117,6 +104,19 @@ pii_data_load = [
 ]
 
 pii_data_drop = ["DROP TABLE full_pii", "DROP TABLE partial_pii", "DROP TABLE no_pii"]
+
+
+@pytest.fixture(scope="session")
+def temp_sqlite_db(tmpdir_factory):
+    temp_dir = tmpdir_factory.mktemp("sqlite_extractor")
+    sqlite_path = temp_dir.join("sqldb")
+
+    logging.info("Sqlite temp db {}", str(sqlite_path))
+
+    yield str(sqlite_path)
+
+    rmtree(temp_dir)
+    logging.info("Deleted {}", str(temp_dir))
 
 
 def mysql_conn():
@@ -137,8 +137,13 @@ def pg_conn():
     )
 
 
+def sqlite_conn(path: str):
+    return (sqlite3.connect(path), path)
+
+
 @pytest.fixture(scope="session")
-def load_all_data():
+def load_all_data(temp_sqlite_db):
+    logging.info("Load data")
     params = [mysql_conn(), pg_conn()]
     for p in params:
         db_conn, expected_schema = p
@@ -146,7 +151,13 @@ def load_all_data():
             for statement in pii_data_load:
                 cursor.execute(statement)
             cursor.execute("commit")
-    yield params
+
+    with closing(sqlite3.connect(temp_sqlite_db)) as conn:
+        for statement in pii_data_load:
+            conn.execute(statement)
+        conn.commit()
+
+    yield params, temp_sqlite_db
     for p in params:
         db_conn, expected_schema = p
         with db_conn.cursor() as cursor:

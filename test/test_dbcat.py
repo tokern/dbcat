@@ -6,6 +6,7 @@ from dbcat.catalog.models import CatSource
 
 @pytest.fixture(scope="module")
 def setup_catalog_and_data(load_all_data, open_catalog_connection):
+    params, sqlite_path = load_all_data
     catalog, conf = open_catalog_connection
     with catalog.managed_session:
         catalog.add_source(
@@ -25,6 +26,7 @@ def setup_catalog_and_data(load_all_data, open_catalog_connection):
             database="piidb",
             cluster="public",
         )
+        catalog.add_source(name="sqlite_db", source_type="sqlite", uri=sqlite_path)
     yield catalog
     with catalog.managed_session as session:
         [session.delete(db) for db in session.query(CatSource).all()]
@@ -52,9 +54,10 @@ def test_pull_all(setup_catalog_and_data):
     pull_all(catalog)
     run_asserts(catalog, "pg")
     run_asserts(catalog, "mysql")
+    run_asserts(catalog, "sqlite_db")
 
 
-@pytest.mark.parametrize("source", ["pg", "mysql"])
+@pytest.mark.parametrize("source", ["pg", "mysql", "sqlite_db"])
 def test_pull(setup_catalog_and_data, source):
     catalog = setup_catalog_and_data
     pull(catalog, source)
