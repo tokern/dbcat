@@ -23,7 +23,7 @@ def test_snowflake_extractor(open_catalog_connection):
             role="sf_role",
             warehouse="sf_warehouse",
         )
-        extractor, conn_conf = DbScanner._create_snowflake_extractors(source)
+        extractor, conn_conf = DbScanner._create_snowflake_extractor(source)
     assert (
         conn_conf.get("{}.database_key".format(extractor.get_scope())) == "sf_db_name"
     )

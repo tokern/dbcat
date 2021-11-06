@@ -1,5 +1,6 @@
 import enum
 from typing import Optional
+from urllib.parse import quote_plus
 
 import sqlalchemy
 from snowflake.sqlalchemy import URL
@@ -50,6 +51,10 @@ class CatSource(BaseModel):
     account = Column(String)
     role = Column(String)
     warehouse = Column(String)
+    aws_access_key_id = Column(String)
+    aws_secret_access_key = Column(String)
+    region_name = Column(String)
+    s3_staging_dir = Column(String)
 
     schemata = relationship("CatSchema", back_populates="source")
     jobs = relationship("Job", back_populates="source")
@@ -81,6 +86,10 @@ class CatSource(BaseModel):
         account: Optional[str] = None,
         role: Optional[str] = None,
         warehouse: Optional[str] = None,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+        region_name: Optional[str] = None,
+        s3_staging_dir: Optional[str] = None,
         **kwargs,
     ):
         self.uri = uri
@@ -104,6 +113,10 @@ class CatSource(BaseModel):
         self.role = role
         self.account = account
         self.warehouse = warehouse
+        self.aws_access_key_id = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
+        self.region_name = region_name
+        self.s3_staging_dir = s3_staging_dir
 
     @property
     def conn_string(self):
@@ -121,6 +134,17 @@ class CatSource(BaseModel):
             )
         elif self.source_type == "sqlite":
             conn_string = "sqlite:///{}".format(self.uri)
+        elif self.source_type == "athena":
+            conn_string = (
+                "awsathena+rest://{aws_access_key_id}:{aws_secret_access_key}@athena.{region_name}.amazonaws.com:443/"
+                "{schema_name}?s3_staging_dir={s3_staging_dir}".format(
+                    aws_access_key_id=quote_plus(self.aws_access_key_id),
+                    aws_secret_access_key=quote_plus(self.aws_secret_access_key),
+                    region_name=self.region,
+                    schema_name=self.database,
+                    s3_staging_dir=quote_plus(self.s3_staging_dir),
+                )
+            )
         else:
             username_password_placeholder = (
                 f"{self.username}:{self.password}" if self.password is not None else ""

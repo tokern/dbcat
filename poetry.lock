@@ -1411,7 +1411,7 @@ watchdog = ["watchdog"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "fb3397be02e40ce497d50688896a26da3d0e9146c20a088a5fa03378d8ac92e1"
+content-hash = "526c2fcc9bc38b67bbd0a6c4fda3c5cd6a1f2f99d925d8776dac1617a9c6fbe9"
 
 [metadata.files]
 alembic = [
