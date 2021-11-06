@@ -28,3 +28,9 @@ connections:
     account: db_account
     role: db_role
     warehouse: db_warehouse
+  - name: aws_athena
+    source_type: athena
+    aws_access_key_id: dummy_key
+    aws_secret_access_key: dummy_secret
+    region_name: us-east-1
+    s3_staging_dir: s3://dummy

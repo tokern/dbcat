@@ -3,6 +3,7 @@ from contextlib import closing
 from typing import Any, Tuple, Type
 
 from databuilder import Scoped
+from databuilder.extractor.athena_metadata_extractor import AthenaMetadataExtractor
 from databuilder.extractor.base_extractor import Extractor
 from databuilder.extractor.base_postgres_metadata_extractor import (
     BasePostgresMetadataExtractor,
@@ -42,9 +43,11 @@ class DbScanner:
         elif source.source_type == "redshift":
             self._extractor, self._conf = DbScanner._create_redshift_extractor(source)
         elif source.source_type == "snowflake":
-            self._extractor, self._conf = DbScanner._create_snowflake_extractors(source)
+            self._extractor, self._conf = DbScanner._create_snowflake_extractor(source)
         elif source.source_type == "sqlite":
             self._extractor, self._conf = DbScanner._create_sqlite_extractor(source)
+        elif source.source_type == "athena":
+            self._extractor, self._conf = DbScanner._create_athena_extractor(source)
         else:
             raise ValueError("{} is not supported".format(source.source_type))
 
@@ -193,7 +196,7 @@ class DbScanner:
         )
 
     @staticmethod
-    def _create_snowflake_extractors(
+    def _create_snowflake_extractor(
         source: CatSource,
     ) -> Tuple[SnowflakeMetadataExtractor, Any]:
         extractor = SnowflakeMetadataExtractor()
@@ -207,6 +210,23 @@ class DbScanner:
                 f"{scope}.{SnowflakeMetadataExtractor.DATABASE_KEY}": source.database,
                 f"{scope}.{SnowflakeMetadataExtractor.SNOWFLAKE_DATABASE_KEY}": source.database,
                 # f"{scope}.{SnowflakeMetadataExtractor.WHERE_CLAUSE_SUFFIX_KEY}": connection.where_clause_suffix,
+            }
+        )
+
+        return extractor, conf
+
+    @staticmethod
+    def _create_athena_extractor(
+        source: CatSource,
+    ) -> Tuple[AthenaMetadataExtractor, Any]:
+        extractor = AthenaMetadataExtractor()
+        scope = extractor.get_scope()
+        conn_string_key = f"{scope}.{SQLAlchemyExtractor().get_scope()}.{SQLAlchemyExtractor.CONN_STRING}"
+
+        conf = ConfigFactory.from_dict(
+            {
+                conn_string_key: source.conn_string,
+                f"{scope}.{AthenaMetadataExtractor.CATALOG_KEY}": source.cluster,
             }
         )
 

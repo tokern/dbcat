@@ -31,6 +31,7 @@ alembic = "^1.6.5"
 snowflake-sqlalchemy = "1.2.4"
 sqlalchemy-mixins = "^1.5"
 pyhocon = "^0.3.58"
+pyathena = {version = "1.11.5", extras = ["sqlalchemy"]}
 
 [tool.poetry.dev-dependencies]
 black = "==19.10b0"
