@@ -32,6 +32,7 @@ snowflake-sqlalchemy = "1.2.4"
 sqlalchemy-mixins = "^1.5"
 pyhocon = "^0.3.58"
 pyathena = {version = "1.11.5", extras = ["sqlalchemy"]}
+PyMySQL = "^1.0.2"
 
 [tool.poetry.dev-dependencies]
 black = "==19.10b0"
@@ -41,7 +42,6 @@ mypy = "*"
 pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
-PyMySQL = "^1.0.2"
 types-PyYAML = "^5.4.3"
 types-PyMySQL = "^1.0.0"
 pytest-lazy-fixture = "^0.6.3"
