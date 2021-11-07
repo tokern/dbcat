@@ -1,6 +1,7 @@
 import logging
+import re
 from contextlib import closing
-from typing import Any, Tuple, Type
+from typing import Any, Generator, List, Optional, Pattern, Tuple, Type
 
 from databuilder import Scoped
 from databuilder.extractor.athena_metadata_extractor import AthenaMetadataExtractor
@@ -26,7 +27,15 @@ from dbcat.catalog.sqlite_extractor import SqliteMetadataExtractor
 
 
 class DbScanner:
-    def __init__(self, catalog: Catalog, source: CatSource):
+    def __init__(
+        self,
+        catalog: Catalog,
+        source: CatSource,
+        include_schema_regex_str: Optional[List[str]] = None,
+        exclude_schema_regex_str: Optional[List[str]] = None,
+        include_table_regex_str: Optional[List[str]] = None,
+        exclude_table_regex_str: Optional[List[str]] = None,
+    ):
         self._name = source.name
         self._extractor: Extractor
         self._conf: ConfigTree
@@ -51,9 +60,66 @@ class DbScanner:
         else:
             raise ValueError("{} is not supported".format(source.source_type))
 
+        self.include_schema_regex: Optional[List[Pattern]] = None
+        self.exclude_schema_regex: Optional[List[Pattern]] = None
+        self.include_table_regex: Optional[List[Pattern]] = None
+        self.exclude_table_regex: Optional[List[Pattern]] = None
+
+        if include_schema_regex_str is not None and len(include_schema_regex_str) > 0:
+            self.include_schema_regex = [
+                re.compile(exp, re.IGNORECASE) for exp in include_schema_regex_str
+            ]
+
+        if exclude_schema_regex_str is not None and len(exclude_schema_regex_str) > 0:
+            self.exclude_schema_regex = [
+                re.compile(exp, re.IGNORECASE) for exp in exclude_schema_regex_str
+            ]
+
+        if include_table_regex_str is not None and len(include_table_regex_str) > 0:
+            self.include_table_regex = [
+                re.compile(exp, re.IGNORECASE) for exp in include_table_regex_str
+            ]
+
+        if exclude_table_regex_str is not None and len(exclude_table_regex_str) > 0:
+            self.exclude_table_regex = [
+                re.compile(exp, re.IGNORECASE) for exp in exclude_table_regex_str
+            ]
+
     @property
     def name(self):
         return self._name
+
+    @staticmethod
+    def _test_regex(
+        name: str,
+        include_regex: Optional[List[Pattern]] = None,
+        exclude_regex: Optional[List[Pattern]] = None,
+    ) -> bool:
+
+        passed = False
+        if include_regex is not None and len(include_regex) > 0:
+            for regex in include_regex:
+                passed |= regex.search(name) is not None
+        else:
+            passed = True
+
+        if exclude_regex is not None and len(exclude_regex) > 0:
+            for regex in exclude_regex:
+                passed &= regex.search(name) is None
+
+        return passed
+
+    def _filter_rows(
+        self, extractor: Extractor
+    ) -> Generator[TableMetadata, None, None]:
+        while record := extractor.extract():
+            if DbScanner._test_regex(
+                record.schema, self.include_schema_regex, self.exclude_schema_regex
+            ) and DbScanner._test_regex(
+                record.name, self.include_table_regex, self.exclude_table_regex
+            ):
+                yield record
+        return None
 
     def scan(self):
         schema_count = 0
@@ -62,7 +128,7 @@ class DbScanner:
         with closing(self._extractor) as extractor:
             extractor.init(Scoped.get_scoped_conf(self._conf, extractor.get_scope()))
 
-            record: TableMetadata = extractor.extract()
+            record: TableMetadata = next(self._filter_rows(extractor))
             current_schema = self._catalog.add_schema(
                 schema_name=record.schema, source=self._source
             )
@@ -90,7 +156,10 @@ class DbScanner:
                     )
                     index += 1
                     column_count += 1
-                record = extractor.extract()
+                try:
+                    record = next(self._filter_rows(extractor))
+                except StopIteration:
+                    record = None
 
         logging.debug(
             "Scanned {} schemata, {} tables, {} columns".format(

@@ -10,6 +10,7 @@ import yaml
 from pytest_lazyfixture import lazy_fixture
 
 from dbcat import catalog_connection, init_db
+from dbcat.catalog import CatSource
 from dbcat.catalog.catalog import PGCatalog
 
 postgres_conf = """
@@ -22,7 +23,7 @@ catalog:
 """
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def root_connection():
     config = yaml.safe_load(postgres_conf)
     with closing(PGCatalog(**config["catalog"])) as conn:
@@ -35,7 +36,7 @@ catalog:
 """
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def setup_sqlite(tmpdir_factory):
     temp_dir = tmpdir_factory.mktemp("sqlite_catalog")
     sqlite_path = temp_dir.join("sqldb")
@@ -53,7 +54,7 @@ catalog:
 """
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def setup_pg(root_connection):
     with root_connection.engine.connect() as conn:
         conn.execute("CREATE USER catalog_user PASSWORD 'catal0g_passw0rd'")
@@ -83,7 +84,7 @@ def setup_catalog(request):
     yield request.param
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def open_catalog_connection(setup_catalog):
     connection, conf = setup_catalog
     with closing(catalog_connection(conf)) as conn:
@@ -106,7 +107,7 @@ pii_data_load = [
 pii_data_drop = ["DROP TABLE full_pii", "DROP TABLE partial_pii", "DROP TABLE no_pii"]
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def temp_sqlite_db(tmpdir_factory):
     temp_dir = tmpdir_factory.mktemp("sqlite_extractor")
     sqlite_path = temp_dir.join("sqldb")
@@ -141,7 +142,7 @@ def sqlite_conn(path: str):
     return (sqlite3.connect(path), path)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def load_all_data(temp_sqlite_db):
     logging.info("Load data")
     params = [mysql_conn(), pg_conn()]
@@ -168,3 +169,31 @@ def load_all_data(temp_sqlite_db):
     for p in params:
         db_conn, expected_schema = p
         db_conn.close()
+
+
+@pytest.fixture(scope="module")
+def setup_catalog_and_data(load_all_data, open_catalog_connection):
+    params, sqlite_path = load_all_data
+    catalog, conf = open_catalog_connection
+    with catalog.managed_session:
+        catalog.add_source(
+            name="mysql",
+            source_type="mysql",
+            uri="127.0.0.1",
+            username="piiuser",
+            password="p11secret",
+            database="piidb",
+        )
+        catalog.add_source(
+            name="pg",
+            source_type="postgresql",
+            uri="127.0.0.1",
+            username="piiuser",
+            password="p11secret",
+            database="piidb",
+            cluster="public",
+        )
+        catalog.add_source(name="sqlite_db", source_type="sqlite", uri=sqlite_path)
+    yield catalog
+    with catalog.managed_session as session:
+        [session.delete(db) for db in session.query(CatSource).all()]

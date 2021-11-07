@@ -3,6 +3,7 @@
 __version__ = "0.8.0"
 
 import logging
+from typing import List, Optional
 
 import yaml
 from alembic import command
@@ -44,11 +45,25 @@ def add_connections(catalog_obj: Catalog, config: str) -> None:
             catalog_obj.add_source(**conn)
 
 
-def pull(catalog_obj: Catalog, connection_name: str) -> None:
+def pull(
+    catalog_obj: Catalog,
+    connection_name: str,
+    include_schema_regex_str: Optional[List[str]] = None,
+    exclude_schema_regex_str: Optional[List[str]] = None,
+    include_table_regex_str: Optional[List[str]] = None,
+    exclude_table_regex_str: Optional[List[str]] = None,
+) -> None:
     with catalog_obj.managed_session:
         source = catalog_obj.get_source(connection_name)
         LOGGER.debug("Source: {}".format(source))
-        scanner = DbScanner(catalog_obj, source)
+        scanner = DbScanner(
+            catalog_obj,
+            source,
+            include_schema_regex_str=include_schema_regex_str,
+            exclude_schema_regex_str=exclude_schema_regex_str,
+            include_table_regex_str=include_table_regex_str,
+            exclude_table_regex_str=exclude_table_regex_str,
+        )
         LOGGER.info("Scanning {}".format(scanner.name))
         scanner.scan()
 

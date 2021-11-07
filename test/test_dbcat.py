@@ -1,35 +1,6 @@
 import pytest
 
 from dbcat import pull, pull_all
-from dbcat.catalog.models import CatSource
-
-
-@pytest.fixture(scope="module")
-def setup_catalog_and_data(load_all_data, open_catalog_connection):
-    params, sqlite_path = load_all_data
-    catalog, conf = open_catalog_connection
-    with catalog.managed_session:
-        catalog.add_source(
-            name="mysql",
-            source_type="mysql",
-            uri="127.0.0.1",
-            username="piiuser",
-            password="p11secret",
-            database="piidb",
-        )
-        catalog.add_source(
-            name="pg",
-            source_type="postgresql",
-            uri="127.0.0.1",
-            username="piiuser",
-            password="p11secret",
-            database="piidb",
-            cluster="public",
-        )
-        catalog.add_source(name="sqlite_db", source_type="sqlite", uri=sqlite_path)
-    yield catalog
-    with catalog.managed_session as session:
-        [session.delete(db) for db in session.query(CatSource).all()]
 
 
 def run_asserts(catalog, connection_name):
