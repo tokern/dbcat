@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import create_engine, desc, func
+from sqlalchemy import TIMESTAMP, create_engine, desc, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session, scoped_session, sessionmaker
 
@@ -178,7 +178,10 @@ class Catalog(ABC):
         )
 
     def get_columns_for_table(
-        self, table: CatTable, column_names: List[str] = None
+        self,
+        table: CatTable,
+        column_names: List[str] = None,
+        newer_than: TIMESTAMP = None,
     ) -> List[CatColumn]:
         stmt = (
             self._current_session.query(CatColumn)
@@ -192,6 +195,8 @@ class Catalog(ABC):
 
         if column_names is not None:
             stmt = stmt.filter(CatColumn.name.in_(column_names))
+        if newer_than is not None:
+            stmt = stmt.filter(CatColumn.updated_at >= newer_than)
         stmt = stmt.order_by(CatColumn.sort_order)
         return stmt.all()
 

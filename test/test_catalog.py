@@ -1,6 +1,7 @@
 import datetime
 import logging
 import time
+from typing import Generator
 
 import pytest
 import yaml
@@ -195,7 +196,7 @@ def test_update_catalog(managed_session):
 
 
 @pytest.fixture(scope="module")
-def managed_session(save_catalog):
+def managed_session(save_catalog) -> Generator[Catalog, None, None]:
     catalog = save_catalog
     with catalog.managed_session:
         yield catalog
@@ -250,6 +251,25 @@ def test_get_table_columns(managed_session):
     table = catalog.get_table("test", "default", "page")
     columns = catalog.get_columns_for_table(table)
     assert len(columns) == 3
+
+
+def test_get_table_columns_with_timestamp(managed_session):
+    catalog = managed_session
+    table = catalog.get_table("test", "default", "page")
+    columns = catalog.get_columns_for_table(table)
+
+    for c in columns:
+        print(c.updated_at.timestamp())
+
+    updated_at = columns[0].updated_at
+    before = updated_at - datetime.timedelta(minutes=1)
+    after = updated_at + datetime.timedelta(minutes=1)
+
+    columns = catalog.get_columns_for_table(table=table, newer_than=before)
+    assert len(columns) == 3
+
+    columns = catalog.get_columns_for_table(table=table, newer_than=after)
+    assert len(columns) == 0
 
 
 def test_get_column_in(managed_session):

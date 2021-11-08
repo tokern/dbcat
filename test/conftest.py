@@ -9,7 +9,7 @@ import pytest
 import yaml
 from pytest_lazyfixture import lazy_fixture
 
-from dbcat import catalog_connection, init_db
+from dbcat import catalog_connection_yaml, init_db
 from dbcat.catalog import CatSource
 from dbcat.catalog.catalog import PGCatalog
 
@@ -87,7 +87,7 @@ def setup_catalog(request):
 @pytest.fixture(scope="module")
 def open_catalog_connection(setup_catalog):
     connection, conf = setup_catalog
-    with closing(catalog_connection(conf)) as conn:
+    with closing(catalog_connection_yaml(conf)) as conn:
         init_db(conn)
         yield conn, conf
 
