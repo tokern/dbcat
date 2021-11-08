@@ -9,7 +9,7 @@ import click
 from dbcat import (
     __version__,
     add_connections,
-    catalog_connection,
+    catalog_connection_yaml,
     init_db,
     pull,
     pull_all,
@@ -124,7 +124,7 @@ def init_db_cli(obj):
 
     logging.debug(config)
 
-    catalog_obj = catalog_connection(config)
+    catalog_obj = catalog_connection_yaml(config)
     with closing(catalog_obj) as catalog_obj:
         init_db(catalog_obj)
 
@@ -147,7 +147,7 @@ def pull_cli(
 
     logging.debug(config)
 
-    catalog_obj = catalog_connection(config)
+    catalog_obj = catalog_connection_yaml(config)
     try:
         init_db(catalog_obj)
         add_connections(catalog_obj, config)

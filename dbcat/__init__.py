@@ -1,6 +1,6 @@
 # flake8: noqa
 
-__version__ = "0.8.1"
+__version__ = "0.8.2"
 
 import logging
 from typing import List, Optional
@@ -17,7 +17,35 @@ from dbcat.migrations import get_alembic_config
 LOGGER = logging.getLogger(__name__)
 
 
-def catalog_connection(config: str) -> Catalog:
+def catalog_connection(
+    catalog_path: str = None,
+    catalog_host: str = None,
+    catalog_port: int = None,
+    catalog_user: str = None,
+    catalog_password: str = None,
+    catalog_database: str = None,
+) -> Catalog:
+    if (
+        catalog_host is not None
+        and catalog_port is not None
+        and catalog_user is not None
+        and catalog_password is not None
+        and catalog_database is not None
+    ):
+        return PGCatalog(
+            host=catalog_host,
+            port=str(catalog_port),
+            user=catalog_user,
+            password=catalog_password,
+            database=catalog_database,
+        )
+    elif catalog_path is not None:
+        return SqliteCatalog(path=str(catalog_path))
+
+    raise AttributeError("None of Path or Postgres connection parameters are provided")
+
+
+def catalog_connection_yaml(config: str) -> Catalog:
     config_yaml = yaml.safe_load(config)
     if "path" in config_yaml["catalog"]:
         return SqliteCatalog(**config_yaml["catalog"])
