@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import TIMESTAMP, create_engine, desc, func
+from sqlalchemy import TIMESTAMP, create_engine, desc, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session, scoped_session, sessionmaker
 
@@ -330,6 +330,7 @@ class Catalog(ABC):
         return (
             self._current_session.query(Task)
             .filter(Task.app_name == app_name)
+            .filter(Task.status == 0)
             .order_by(Task.updated_at.desc())
             .limit(1)
             .one_or_none()
@@ -416,7 +417,10 @@ class Catalog(ABC):
         )
 
     def set_column_pii_type(self, column: CatColumn, pii_type: PiiTypes):
-        column.pii_type = pii_type
+        stmt = (
+            update(CatColumn).where(CatColumn.id == column.id).values(pii_type=pii_type)
+        )
+        self._current_session.execute(stmt)
         self._current_session.commit()
 
 
