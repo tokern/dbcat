@@ -1,17 +1,19 @@
 import logging
+import os
 import sqlite3
 from contextlib import closing
 from shutil import rmtree
+from typing import Generator, Tuple
 
 import psycopg2
 import pymysql
 import pytest
 import yaml
-from pytest_lazyfixture import lazy_fixture
+from pytest_cases import fixture, parametrize_with_cases
 
 from dbcat import catalog_connection_yaml, init_db
 from dbcat.catalog import CatSource
-from dbcat.catalog.catalog import PGCatalog
+from dbcat.catalog.catalog import Catalog, PGCatalog
 
 postgres_conf = """
 catalog:
@@ -36,12 +38,18 @@ catalog:
 """
 
 
-@pytest.fixture(scope="module")
-def setup_sqlite(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("sqlite_catalog")
+@fixture(scope="module")
+def temp_sqlite_path(tmpdir_factory):
+    temp_dir = tmpdir_factory.mktemp("sqlite_test")
     sqlite_path = temp_dir.join("sqldb")
 
-    yield None, sqlite_catalog_conf.format(path=sqlite_path)
+    yield sqlite_path
+
+    os.remove(sqlite_path)
+
+
+def case_setup_sqlite(temp_sqlite_path):
+    return sqlite_catalog_conf.format(path=temp_sqlite_path)
 
 
 pg_catalog_conf = """
@@ -54,42 +62,41 @@ catalog:
 """
 
 
-@pytest.fixture(scope="module")
-def setup_pg(root_connection):
-    with root_connection.engine.connect() as conn:
-        conn.execute("CREATE USER catalog_user PASSWORD 'catal0g_passw0rd'")
-        conn.execution_options(isolation_level="AUTOCOMMIT").execute(
-            "CREATE DATABASE tokern"
-        )
-        conn.execution_options(isolation_level="AUTOCOMMIT").execute(
-            "GRANT ALL PRIVILEGES ON DATABASE tokern TO catalog_user"
-        )
+@fixture(scope="module")
+def setup_pg_catalog():
+    config = yaml.safe_load(postgres_conf)
+    with closing(PGCatalog(**config["catalog"])) as root_connection:
+        with root_connection.engine.connect() as conn:
+            conn.execute("CREATE USER catalog_user PASSWORD 'catal0g_passw0rd'")
+            conn.execution_options(isolation_level="AUTOCOMMIT").execute(
+                "CREATE DATABASE tokern"
+            )
+            conn.execution_options(isolation_level="AUTOCOMMIT").execute(
+                "GRANT ALL PRIVILEGES ON DATABASE tokern TO catalog_user"
+            )
 
-    yield root_connection, pg_catalog_conf
+        yield
 
-    with root_connection.engine.connect() as conn:
-        conn.execution_options(isolation_level="AUTOCOMMIT").execute(
-            "DROP DATABASE tokern"
-        )
+        with root_connection.engine.connect() as conn:
+            conn.execution_options(isolation_level="AUTOCOMMIT").execute(
+                "DROP DATABASE tokern"
+            )
 
-        conn.execution_options(isolation_level="AUTOCOMMIT").execute(
-            "DROP USER catalog_user"
-        )
-
-
-@pytest.fixture(
-    scope="session", params=[lazy_fixture("setup_sqlite"), lazy_fixture("setup_pg")]
-)
-def setup_catalog(request):
-    yield request.param
+            conn.execution_options(isolation_level="AUTOCOMMIT").execute(
+                "DROP USER catalog_user"
+            )
 
 
-@pytest.fixture(scope="module")
-def open_catalog_connection(setup_catalog):
-    connection, conf = setup_catalog
-    with closing(catalog_connection_yaml(conf)) as conn:
+def case_setup_pg(setup_pg_catalog):
+    return pg_catalog_conf
+
+
+@fixture(scope="module")
+@parametrize_with_cases("catalog_conf", cases=".", scope="module")
+def open_catalog_connection(catalog_conf) -> Generator[Tuple[Catalog, str], None, None]:
+    with closing(catalog_connection_yaml(catalog_conf)) as conn:
         init_db(conn)
-        yield conn, conf
+        yield conn, catalog_conf
 
 
 pii_data_load = [
@@ -139,7 +146,7 @@ def pg_conn():
 
 
 def sqlite_conn(path: str):
-    return (sqlite3.connect(path), path)
+    return sqlite3.connect(path), path
 
 
 @pytest.fixture(scope="module")
