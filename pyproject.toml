@@ -48,7 +48,7 @@ pytest = "*"
 pytest-cov = "*"
 types-PyYAML = "^5.4.3"
 types-PyMySQL = "^1.0.0"
-pytest-lazy-fixture = "^0.6.3"
+pytest-cases = "^3.6.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
