@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -45,7 +46,7 @@ def cli(
         None, "--version", callback=version_callback
     ),
 ):
-    #    logging.basicConfig(level=getattr(logging, log_level.upper()))
+    logging.basicConfig(level=getattr(logging, log_level.upper()))
 
     if catalog_path is None:
         app_dir = typer.get_app_dir("dbcat")
@@ -54,12 +55,12 @@ def cli(
         catalog_path = Path(app_dir) / "catalog.db"
 
     app_state["catalog_connection"] = {
-        "catalog_path": str(catalog_path),
-        "catalog_user": catalog_user,
-        "catalog_password": catalog_password,
-        "catalog_host": catalog_host,
-        "catalog_port": catalog_port,
-        "catalog_database": catalog_database,
+        "path": str(catalog_path),
+        "user": catalog_user,
+        "password": catalog_password,
+        "host": catalog_host,
+        "port": catalog_port,
+        "database": catalog_database,
     }
     app_state["output_format"] = output_format
 
