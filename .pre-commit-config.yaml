@@ -29,5 +29,4 @@ repos:
         language: system
         entry: poetry run flake8
         types: [python]
-        exclude: setup.py
 

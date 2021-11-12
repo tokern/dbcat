@@ -6,7 +6,7 @@ from databuilder.extractor.sql_alchemy_extractor import SQLAlchemyExtractor
 from databuilder.models.table_metadata import TableMetadata
 from pyhocon import ConfigFactory
 
-from dbcat import DbScanner
+from dbcat.catalog.db import DbScanner
 from dbcat.catalog.sqlite_extractor import SqliteMetadataExtractor
 
 

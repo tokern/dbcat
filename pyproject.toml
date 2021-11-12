@@ -37,6 +37,7 @@ SQLAlchemy = "~=1.3.24"
 botocore = "~=1.20.23"
 pyparsing = "~=2.0"
 boto3 = "1.17.23"
+typer = "^0.4.0"
 
 [tool.poetry.dev-dependencies]
 black = "==19.10b0"
@@ -55,4 +56,4 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-dbcat = "dbcat.__main__:main"
+dbcat = "dbcat.__main__:app"

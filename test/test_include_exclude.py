@@ -1,9 +1,9 @@
-from dbcat import pull
+from dbcat.api import scan_sources
 
 
 def test_pull_include_table(setup_catalog_and_data):
     catalog = setup_catalog_and_data
-    pull(catalog, "sqlite_db", include_table_regex_str=["full.*"])
+    scan_sources(catalog, ["sqlite_db"], include_table_regex=["full.*"])
 
     with catalog.managed_session:
         source = catalog.get_source("sqlite_db")
@@ -20,7 +20,7 @@ def test_pull_include_table(setup_catalog_and_data):
 
 def test_pull_include_table_list(setup_catalog_and_data):
     catalog = setup_catalog_and_data
-    pull(catalog, "sqlite_db", include_table_regex_str=["full.*", "partial.*"])
+    scan_sources(catalog, ["sqlite_db"], include_table_regex=["full.*", "partial.*"])
 
     with catalog.managed_session:
         source = catalog.get_source("sqlite_db")
@@ -38,7 +38,7 @@ def test_pull_include_table_list(setup_catalog_and_data):
 
 def test_pull_exclude_table(setup_catalog_and_data):
     catalog = setup_catalog_and_data
-    pull(catalog, "pg", exclude_table_regex_str=["full.*", "partial.*"])
+    scan_sources(catalog, ["pg"], exclude_table_regex=["full.*", "partial.*"])
 
     with catalog.managed_session:
         source = catalog.get_source("pg")
@@ -55,7 +55,7 @@ def test_pull_exclude_table(setup_catalog_and_data):
 
 def test_pull_exclude_table_list(setup_catalog_and_data):
     catalog = setup_catalog_and_data
-    pull(catalog, "pg", exclude_table_regex_str=["full.*"])
+    scan_sources(catalog, ["pg"], exclude_table_regex=["full.*"])
 
     with catalog.managed_session:
         source = catalog.get_source("pg")
