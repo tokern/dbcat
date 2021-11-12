@@ -19,39 +19,31 @@ class OutputFormat(str, Enum):
 
 
 def catalog_connection(
-    catalog_path: str = None,
-    catalog_host: str = None,
-    catalog_port: int = None,
-    catalog_user: str = None,
-    catalog_password: str = None,
-    catalog_database: str = None,
+    path: str = None,
+    host: str = None,
+    port: int = None,
+    user: str = None,
+    password: str = None,
+    database: str = None,
 ) -> Catalog:
     if (
-        catalog_host is not None
-        and catalog_port is not None
-        and catalog_user is not None
-        and catalog_password is not None
-        and catalog_database is not None
+        host is not None
+        and user is not None
+        and password is not None
+        and database is not None
     ):
         return PGCatalog(
-            host=catalog_host,
-            port=str(catalog_port),
-            user=catalog_user,
-            password=catalog_password,
-            database=catalog_database,
+            host=host, port=port, user=user, password=password, database=database,
         )
-    elif catalog_path is not None:
-        return SqliteCatalog(path=str(catalog_path))
+    elif path is not None:
+        return SqliteCatalog(path=str(path))
 
     raise AttributeError("None of Path or Postgres connection parameters are provided")
 
 
 def catalog_connection_yaml(config: str) -> Catalog:
     config_yaml = yaml.safe_load(config)
-    if "path" in config_yaml["catalog"]:
-        return SqliteCatalog(**config_yaml["catalog"])
-    else:
-        return PGCatalog(**config_yaml["catalog"])
+    return catalog_connection(**config_yaml["catalog"])
 
 
 def init_db(catalog_obj: Catalog) -> None:

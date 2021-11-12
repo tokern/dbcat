@@ -431,14 +431,14 @@ class PGCatalog(Catalog):
         password: str,
         database: str,
         host: str,
-        port: str = None,
+        port: int = None,
         **kwargs
     ):
         super(PGCatalog, self).__init__(**kwargs)
         self.user: str = user
         self.password: str = password
         self.host: str = host
-        self.port: int = int(port) if port is not None else 5432
+        self.port: int = port if port is not None else 5432
         self.database: str = database
 
     @property
