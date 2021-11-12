@@ -11,7 +11,7 @@ import pytest
 import yaml
 from pytest_cases import fixture, parametrize_with_cases
 
-from dbcat import catalog_connection_yaml, init_db
+from dbcat.api import catalog_connection_yaml, init_db
 from dbcat.catalog import CatSource
 from dbcat.catalog.catalog import Catalog, PGCatalog
 
@@ -119,12 +119,12 @@ def temp_sqlite_db(tmpdir_factory):
     temp_dir = tmpdir_factory.mktemp("sqlite_extractor")
     sqlite_path = temp_dir.join("sqldb")
 
-    logging.info("Sqlite temp db {}", str(sqlite_path))
+    logging.info("Sqlite temp db {}".format(str(sqlite_path)))
 
     yield str(sqlite_path)
 
     rmtree(temp_dir)
-    logging.info("Deleted {}", str(temp_dir))
+    logging.info("Deleted {}".format(str(temp_dir)))
 
 
 def mysql_conn():
