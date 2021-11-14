@@ -1,13 +1,15 @@
 import logging
 from contextlib import closing
+from pathlib import Path
 from typing import Generator, Union
 
+import typer
 from databuilder import Scoped
 from databuilder.extractor.base_extractor import Extractor
 from databuilder.models.table_metadata import ColumnMetadata, TableMetadata
 from pyhocon import ConfigTree
 
-from dbcat.api import catalog_connection
+from dbcat.api import open_catalog
 from dbcat.generators import table_generator
 
 LOGGER = logging.getLogger(__name__)
@@ -56,7 +58,10 @@ class CatalogExtractor(Extractor):
         """
         LOGGER.debug(self.catalog_config.as_plain_ordered_dict())
 
-        catalog = catalog_connection(**self.catalog_config.as_plain_ordered_dict())
+        catalog = open_catalog(
+            app_dir=Path(typer.get_app_dir("tokern")),
+            **self.catalog_config.as_plain_ordered_dict()
+        )
         with closing(catalog) as catalog:
             with catalog.managed_session:
                 if self.source_names is not None and len(self.source_names) > 0:

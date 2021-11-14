@@ -55,6 +55,7 @@ pytest-cov = "*"
 types-PyYAML = "^5.4.3"
 types-PyMySQL = "^1.0.0"
 pytest-cases = "^3.6.5"
+pytest-mock = "^3.6.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

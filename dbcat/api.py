@@ -1,5 +1,6 @@
 import logging
 from enum import Enum
+from pathlib import Path
 from typing import List, Optional
 
 import yaml
@@ -32,10 +33,12 @@ def catalog_connection(
         and password is not None
         and database is not None
     ):
+        LOGGER.debug(f"Open PG Catalog at {host}")
         return PGCatalog(
             host=host, port=port, user=user, password=password, database=database,
         )
     elif path is not None:
+        LOGGER.debug(f"Open Sqlite Catalog at {path}")
         return SqliteCatalog(path=str(path))
 
     raise AttributeError("None of Path or Postgres connection parameters are provided")
@@ -43,7 +46,37 @@ def catalog_connection(
 
 def catalog_connection_yaml(config: str) -> Catalog:
     config_yaml = yaml.safe_load(config)
+    LOGGER.debug("Open Catalog from config")
     return catalog_connection(**config_yaml["catalog"])
+
+
+def open_catalog(
+    app_dir: Path,
+    path: str = None,
+    host: str = None,
+    port: int = None,
+    user: str = None,
+    password: str = None,
+    database: str = None,
+) -> Catalog:
+    try:
+        return catalog_connection(
+            path=path,
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            database=database,
+        )
+    except AttributeError:
+        config_file = app_dir / "catalog.yml"
+        if config_file.exists():
+            with config_file.open() as f:
+                LOGGER.debug(f"Open Catalog from config file {config_file}")
+                return catalog_connection_yaml(f.read())
+        else:
+            LOGGER.debug(f"Open default Sqlite Catalog in {app_dir}/catalog.db")
+            return catalog_connection(path=str(app_dir / "catalog.db"))
 
 
 def init_db(catalog_obj: Catalog) -> None:
