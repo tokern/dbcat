@@ -272,6 +272,7 @@ class CatColumn(BaseModel):
     data_type = Column(String)
     sort_order = Column(Integer)
     pii_type = Column(sqlalchemy.types.Enum(PiiTypes))
+    pii_plugin = Column(String)
     table_id = Column(Integer, ForeignKey("tables.id"))
     table = relationship("CatTable", back_populates="columns", lazy="joined")
 

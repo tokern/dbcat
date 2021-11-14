@@ -394,10 +394,11 @@ def test_update_column_pii_type(managed_session):
     column = catalog.get_column("test", "default", "page", "page_title")
 
     pii_type: PiiTypes = PiiTypes.PHONE
-    catalog.set_column_pii_type(column, pii_type)
+    catalog.set_column_pii_type(column, pii_type, "column_scanner")
 
     updated_column = catalog.get_column("test", "default", "page", "page_title")
     assert updated_column.pii_type == pii_type
+    assert updated_column.pii_plugin == "column_scanner"
     assert updated_column.updated_at >= updated_column.created_at
 
 
