@@ -6,7 +6,9 @@ from typing import Generator
 import pytest
 import yaml
 
-from dbcat.catalog.catalog import Catalog
+import dbcat.api
+from dbcat.api import init_db, open_catalog
+from dbcat.catalog.catalog import Catalog, SqliteCatalog
 from dbcat.catalog.models import (
     CatColumn,
     CatSchema,
@@ -776,3 +778,20 @@ def test_get_latest_task(save_catalog: Catalog):
         latest = catalog.get_latest_task("piicatcher_latest")
         assert latest.app_name == "piicatcher_latest"
         assert latest.message == "Run 3"
+
+
+def test_default_catalog(tmpdir):
+    catalog = open_catalog(app_dir=tmpdir)
+    default_catalog = tmpdir / "catalog.db"
+    assert isinstance(catalog, SqliteCatalog)
+    init_db(catalog)
+    assert default_catalog.exists()
+
+
+def test_catalog_config_file(mocker, tmpdir):
+    config_file = tmpdir / "catalog.yml"
+    with config_file.open("w") as f:
+        f.write("test_catalog_config")
+    mocker.patch("dbcat.api.catalog_connection_yaml")
+    open_catalog(app_dir=tmpdir)
+    dbcat.api.catalog_connection_yaml.assert_called_once_with("test_catalog_config")

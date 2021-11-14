@@ -1,8 +1,10 @@
 import logging
 import re
 from contextlib import closing
-from typing import Iterable, List, Optional, Pattern
+from pathlib import Path
+from typing import Iterable, List, Optional, Pattern, Type
 
+import typer
 from datahub.configuration import ConfigModel
 from datahub.emitter.mce_builder import DEFAULT_ENV
 from datahub.ingestion.api.common import PipelineContext, WorkUnit
@@ -26,7 +28,7 @@ from datahub.metadata.com.linkedin.pegasus2avro.schema import (
 )
 from datahub.metadata.schema_classes import GlobalTagsClass, TagAssociationClass
 
-from dbcat.api import catalog_connection
+from dbcat.api import open_catalog
 from dbcat.generators import table_generator
 
 LOGGER = logging.getLogger(__name__)
@@ -34,7 +36,7 @@ LOGGER = logging.getLogger(__name__)
 
 class CatalogConfig(ConfigModel):
     path: Optional[str] = None
-    username: Optional[str] = None
+    user: Optional[str] = None
     password: Optional[str] = None
     database: Optional[str] = None
     host: Optional[str] = None
@@ -60,7 +62,7 @@ class CatalogSource(Source):
 
     @staticmethod
     def get_column_type(data_type: str) -> SchemaFieldDataType:
-        type_class = NullTypeClass
+        type_class: Type = NullTypeClass
         if CatalogSource.int_pattern.match(data_type) is not None:
             type_class = NumberTypeClass
         elif CatalogSource.text_pattern.match(data_type) is not None:
@@ -87,9 +89,10 @@ class CatalogSource(Source):
         self.report = SQLSourceReport()
 
     def get_workunits(self) -> Iterable[WorkUnit]:
-        catalog = catalog_connection(
+        catalog = open_catalog(
+            app_dir=Path(typer.get_app_dir("tokern")),
             path=self.config.path,
-            user=self.config.username,
+            user=self.config.user,
             password=self.config.password,
             host=self.config.host,
             port=self.config.port,
@@ -129,6 +132,7 @@ class CatalogSource(Source):
 
                         schema_fields = []
                         for column in catalog.get_columns_for_table(table):
+                            global_tags: Optional[GlobalTagsClass] = None
                             if column.pii_type is not None:
                                 global_tags = GlobalTagsClass(
                                     tags=[
@@ -138,8 +142,6 @@ class CatalogSource(Source):
                                         ),
                                     ]
                                 )
-                            else:
-                                global_tags = None
 
                             schema_fields.append(
                                 SchemaField(

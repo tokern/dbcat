@@ -61,6 +61,7 @@ jobs:
 
       - python/install-packages:
           pkg-manager: poetry
+          args: -E datahub
           include-python-in-cache-key: false
           include-branch-in-cache-key: false
 

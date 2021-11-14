@@ -4,7 +4,7 @@ from typing import List, Optional
 
 import typer
 
-from dbcat.api import catalog_connection, init_db, scan_sources
+from dbcat.api import init_db, open_catalog, scan_sources
 from dbcat.app_state import app_state
 
 schema_help_text = """
@@ -60,7 +60,7 @@ def scan(
         None, help=exclude_table_help_text
     ),
 ):
-    catalog = catalog_connection(**app_state["catalog_connection"])
+    catalog = open_catalog(**app_state["catalog_connection"])
     with closing(catalog):
         init_db(catalog)
         scan_sources(
@@ -78,7 +78,7 @@ def add_sqlite(
     name: str = typer.Option(..., help="A memorable name for the database"),
     path: Path = typer.Option(..., help="File path to SQLite database"),
 ):
-    catalog = catalog_connection(**app_state["catalog_connection"])
+    catalog = open_catalog(**app_state["catalog_connection"])
     with closing(catalog):
         init_db(catalog)
 
@@ -96,7 +96,7 @@ def add_postgresql(
     uri: str = typer.Option(..., help="Hostname or URI of the database"),
     port: Optional[int] = typer.Option(None, help="Port number of the database"),
 ):
-    catalog = catalog_connection(**app_state["catalog_connection"])
+    catalog = open_catalog(**app_state["catalog_connection"])
     with closing(catalog):
         init_db(catalog)
 
@@ -122,7 +122,7 @@ def add_mysql(
     uri: str = typer.Option(..., help="Hostname or URI of the database"),
     port: Optional[int] = typer.Option(None, help="Port number of the database"),
 ):
-    catalog = catalog_connection(**app_state["catalog_connection"])
+    catalog = open_catalog(**app_state["catalog_connection"])
     with closing(catalog):
         init_db(catalog)
 
@@ -148,7 +148,7 @@ def add_redshift(
     uri: str = typer.Option(..., help="Hostname or URI of the database"),
     port: Optional[int] = typer.Option(None, help="Port number of the database"),
 ):
-    catalog = catalog_connection(**app_state["catalog_connection"])
+    catalog = open_catalog(**app_state["catalog_connection"])
     with closing(catalog):
         init_db(catalog)
 
@@ -175,7 +175,7 @@ def add_snowflake(
     warehouse: str = typer.Option(..., help="Snowflake Warehouse Name"),
     role: str = typer.Option(..., help="Snowflake Role Name"),
 ):
-    catalog = catalog_connection(**app_state["catalog_connection"])
+    catalog = open_catalog(**app_state["catalog_connection"])
     with closing(catalog):
         init_db(catalog)
 
@@ -201,7 +201,7 @@ def add_athena(
     region_name: str = typer.Option(..., help="AWS Region Name"),
     s3_staging_dir: str = typer.Option(..., help="S3 Staging Dir"),
 ):
-    catalog = catalog_connection(**app_state["catalog_connection"])
+    catalog = open_catalog(**app_state["catalog_connection"])
     with closing(catalog):
         init_db(catalog)
 

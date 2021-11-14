@@ -48,11 +48,9 @@ def cli(
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
-    if catalog_path is None:
-        app_dir = typer.get_app_dir("tokern")
-        app_dir_path = Path(app_dir)
-        app_dir_path.mkdir(parents=True, exist_ok=True)
-        catalog_path = Path(app_dir) / "catalog.db"
+    app_dir = typer.get_app_dir("tokern")
+    app_dir_path = Path(app_dir)
+    app_dir_path.mkdir(parents=True, exist_ok=True)
 
     app_state["catalog_connection"] = {
         "path": str(catalog_path),
@@ -61,6 +59,7 @@ def cli(
         "host": catalog_host,
         "port": catalog_port,
         "database": catalog_database,
+        "app_dir": app_dir,
     }
     app_state["output_format"] = output_format
 
