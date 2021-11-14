@@ -1,0 +1,6 @@
+source:
+  type: dbcat.datahub.CatalogSource
+  config:
+    path: /home/rajat/.config/tokern/catalog.db
+sink:
+  type: "console"

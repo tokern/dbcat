@@ -49,7 +49,7 @@ def cli(
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
     if catalog_path is None:
-        app_dir = typer.get_app_dir("dbcat")
+        app_dir = typer.get_app_dir("tokern")
         app_dir_path = Path(app_dir)
         app_dir_path.mkdir(parents=True, exist_ok=True)
         catalog_path = Path(app_dir) / "catalog.db"
