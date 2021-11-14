@@ -38,6 +38,11 @@ botocore = "~=1.20.23"
 pyparsing = "~=2.0"
 boto3 = "1.17.23"
 typer = "^0.4.0"
+acryl-datahub = {version = "^0.8.16", optional = true}
+great-expectations = {version = "^0.13.42", optional = true}
+
+[tool.poetry.extras]
+datahub = ["acryl-datahub", "great-expectations"]
 
 [tool.poetry.dev-dependencies]
 black = "==19.10b0"
