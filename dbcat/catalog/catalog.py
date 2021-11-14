@@ -416,9 +416,13 @@ class Catalog(ABC):
             DefaultSchema, source_id=source.id, schema_id=default_schema.id
         )
 
-    def set_column_pii_type(self, column: CatColumn, pii_type: PiiTypes):
+    def set_column_pii_type(
+        self, column: CatColumn, pii_type: PiiTypes, pii_plugin: str
+    ):
         stmt = (
-            update(CatColumn).where(CatColumn.id == column.id).values(pii_type=pii_type)
+            update(CatColumn)
+            .where(CatColumn.id == column.id)
+            .values(dict(pii_type=pii_type, pii_plugin=pii_plugin))
         )
         self._current_session.execute(stmt)
         self._current_session.commit()
