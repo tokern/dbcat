@@ -62,5 +62,4 @@ jobs:
         python -m poetry run mypy
     - name: Test with pytest
       run: |
-        python -m poetry run python -m spacy download en_core_web_sm
         python -m poetry run pytest --pg-host postgres --mysql-host mariadb --junitxml=junit/test-results.xml --cov=dbcat --cov-report=xml --cov-report=html test/
