@@ -58,7 +58,7 @@ jobs:
     - name: Lint
       run: |
         python -m poetry run black --check .
-        python -m poetry run flake8 piicatcher tests
+        python -m poetry run flake8 dbcat test
         python -m poetry run mypy
     - name: Test with pytest
       run: |
