@@ -35,12 +35,12 @@ def catalog_connection(
         and password is not None
         and database is not None
     ):
-        LOGGER.debug(f"Open PG Catalog at {host}")
+        LOGGER.info(f"Open PG Catalog at {host}")
         return PGCatalog(
             host=host, port=port, user=user, password=password, database=database,
         )
     elif path is not None:
-        LOGGER.debug(f"Open Sqlite Catalog at {path}")
+        LOGGER.info(f"Open Sqlite Catalog at {path}")
         return SqliteCatalog(path=str(path))
 
     raise AttributeError("None of Path or Postgres connection parameters are provided")
@@ -71,7 +71,7 @@ def open_catalog(
             database=database,
         )
     except AttributeError:
-        LOGGER.debug("No catalog options given as parameters.")
+        LOGGER.info("No catalog options given as parameters.")
         config_file = app_dir / "catalog.yml"
         if config_file.exists():
             with config_file.open() as f:
@@ -89,7 +89,7 @@ def init_db(catalog_obj: Catalog) -> None:
 
     config = get_alembic_config(catalog_obj.engine)
     command.upgrade(config, "heads")
-    LOGGER.debug("Initialized the database")
+    LOGGER.info("Initialized the database")
 
 
 def scan_sources(
@@ -111,7 +111,7 @@ def scan_sources(
         else:
             sources = catalog.get_sources()
 
-        LOGGER.debug("%d sources will be scanned", len(sources))
+        LOGGER.info("%d sources will be scanned", len(sources))
         for source in sources:
             scanner = DbScanner(
                 catalog,

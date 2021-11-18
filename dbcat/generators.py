@@ -59,7 +59,7 @@ def table_generator(
 
     for schema_object in schemata:
         schema = catalog.get_schema_by_id(schema_object.id)
-
+        LOGGER.info("Generating schema %s", schema.name)
         table_objects = filter_objects(
             include_table_regex_str,
             exclude_table_regex_str,
@@ -73,4 +73,5 @@ def table_generator(
 
         for table_object in table_objects:
             table = catalog.get_table_by_id(table_object.id)
+            LOGGER.info("Generating table %s", table.name)
             yield schema, table

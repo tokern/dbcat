@@ -137,9 +137,9 @@ class DbScanner:
                 schema_name=record.schema, source=self._source
             )
             schema_count += 1
-            LOGGER.debug(f"Start extraction of schema {record.schema}")
+            LOGGER.info(f"Start extraction of schema {record.schema}")
             while record:
-                logging.debug(record)
+                LOGGER.debug(record)
                 if record.schema != current_schema.name:
                     LOGGER.debug(f"Total tables extracted: {table_count}")
                     current_schema = self._catalog.add_schema(
@@ -167,7 +167,7 @@ class DbScanner:
                 except StopIteration:
                     record = None
 
-        LOGGER.debug(
+        LOGGER.info(
             "Scanned {} schemata, {} tables, {} columns".format(
                 schema_count, table_count, column_count
             )

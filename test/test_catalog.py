@@ -76,11 +76,11 @@ def save_catalog(open_catalog_connection):
         session.commit()
 
 
-def test_catalog_config(root_connection):
+def test_catalog_config(root_connection, request):
     conn: Catalog = root_connection
     assert conn.user == "piiuser"
     assert conn.password == "p11secret"
-    assert conn.host == "127.0.0.1"
+    assert conn.host == request.config.getoption("--pg-host")
     assert conn.port == 5432
     assert conn.database == "piidb"
 
