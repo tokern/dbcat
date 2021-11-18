@@ -1,5 +1,4 @@
-[![CircleCI](https://circleci.com/gh/tokern/dbcat.svg?style=svg)](https://circleci.com/gh/tokern/dbcat)
-![Actions](https://github.com/tokern/dbcat/actions/workflows/ci.yml/badge.svg)
+[![dbcat](https://github.com/tokern/dbcat/actions/workflows/ci.yml/badge.svg)](https://github.com/tokern/dbcat/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/dbcat.svg)](https://pypi.python.org/pypi/dbcat)
 [![image](https://img.shields.io/pypi/l/dbcat.svg)](https://pypi.org/project/dbcat/)
 [![image](https://img.shields.io/pypi/pyversions/dbcat.svg)](https://pypi.org/project/dbcat/)
