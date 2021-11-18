@@ -44,8 +44,10 @@ def test_sqlite_extractor(load_all_data):
 
         records: List[TableMetadata] = []
 
-        while record := extractor.extract():
+        record = extractor.extract()
+        while record:
             records.append(record)
+            record = extractor.extract()
 
         assert len(records) == 3
         full_pii_table = records[0]

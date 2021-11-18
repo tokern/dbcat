@@ -112,13 +112,15 @@ class DbScanner:
     def _filter_rows(
         self, extractor: Extractor
     ) -> Generator[TableMetadata, None, None]:
-        while record := extractor.extract():
+        record = extractor.extract()
+        while record:
             if DbScanner._test_regex(
                 record.schema, self.include_schema_regex, self.exclude_schema_regex
             ) and DbScanner._test_regex(
                 record.name, self.include_table_regex, self.exclude_table_regex
             ):
                 yield record
+            record = extractor.extract()
         return None
 
     def scan(self):
