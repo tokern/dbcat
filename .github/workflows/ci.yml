@@ -54,7 +54,7 @@ jobs:
       run: poetry --version
     - name: Install dependencies
       run: |
-        python -m poetry install
+        python -m poetry install -E datahub
     - name: Lint
       run: |
         python -m poetry run black --check .
