@@ -57,7 +57,6 @@ jobs:
         python -m poetry install
     - name: Lint
       run: |
-        python -m poetry run isort --check --diff .
         python -m poetry run black --check .
         python -m poetry run flake8 piicatcher tests
         python -m poetry run mypy
