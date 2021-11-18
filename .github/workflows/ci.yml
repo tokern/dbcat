@@ -1,0 +1,67 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: dbcat
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.6', '3.7', '3.8', '3.9' ]
+    name: Python ${{ matrix.python-version }}
+    # Service containers to run with `container-job`
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_USER: piiuser
+          POSTGRES_PASSWORD: p11secret
+          POSTGRES_DB: piidb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mariadb:
+        image: mariadb:latest
+        ports:
+          - 3306
+        env:
+          MYSQL_USER: piiuser
+          MYSQL_PASSWORD: p11secret
+          MYSQL_DATABASE: piidb
+          MYSQL_ROOT_PASSWORD: r00tpassw0rd
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install Python Poetry
+      uses: abatilo/actions-poetry@v2.1.0
+      with:
+        poetry-version: 1.1.2
+    - name: View poetry version
+      run: poetry --version
+    - name: Install dependencies
+      run: |
+        python -m poetry install
+    - name: Lint
+      run: |
+        python -m poetry run isort --check --diff .
+        python -m poetry run black --check .
+        python -m poetry run flake8 piicatcher tests
+        python -m poetry run mypy
+    - name: Test with pytest
+      run: |
+        python -m poetry run python -m spacy download en_core_web_sm
+        python -m poetry run pytest --pg-host postgres --mysql-host mariadb --junitxml=junit/test-results.xml --cov=dbcat --cov-report=xml --cov-report=html test/
