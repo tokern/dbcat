@@ -55,11 +55,6 @@ jobs:
     - name: Install dependencies
       run: |
         python -m poetry install -E datahub
-    - name: Lint
-      run: |
-        python -m poetry run black --check .
-        python -m poetry run flake8 dbcat test
-        python -m poetry run mypy
     - name: Test with pytest
       run: |
         python -m poetry run pytest --pg-host postgres --mysql-host mariadb --junitxml=junit/test-results.xml --cov=dbcat --cov-report=xml --cov-report=html test/
