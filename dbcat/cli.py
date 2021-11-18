@@ -6,6 +6,7 @@ import typer
 
 from dbcat.api import init_db, open_catalog, scan_sources
 from dbcat.app_state import app_state
+from dbcat.generators import NoMatchesError
 
 schema_help_text = """
 Scan only schemas matching schema; When this option is not specified, all
@@ -63,14 +64,20 @@ def scan(
     catalog = open_catalog(**app_state["catalog_connection"])
     with closing(catalog):
         init_db(catalog)
-        scan_sources(
-            catalog=catalog,
-            source_names=source_name,
-            include_schema_regex=include_schema,
-            exclude_schema_regex=exclude_schema,
-            include_table_regex=include_table,
-            exclude_table_regex=exclude_table,
-        )
+        try:
+            scan_sources(
+                catalog=catalog,
+                source_names=source_name,
+                include_schema_regex=include_schema,
+                exclude_schema_regex=exclude_schema,
+                include_table_regex=include_table,
+                exclude_table_regex=exclude_table,
+            )
+        except NoMatchesError:
+            typer.echo(
+                "No schema or tables scanned. Ensure include/exclude patterns are correct "
+                "and database has tables"
+            )
 
 
 @app.command()

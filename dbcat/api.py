@@ -5,10 +5,12 @@ from typing import List, Optional
 
 import yaml
 from alembic import command
+from sqlalchemy.orm.exc import NoResultFound
 
-from dbcat.catalog import Catalog
+from dbcat.catalog import Catalog, CatSource
 from dbcat.catalog.catalog import PGCatalog, SqliteCatalog
 from dbcat.catalog.db import DbScanner
+from dbcat.generators import NoMatchesError
 from dbcat.migrations import get_alembic_config
 
 LOGGER = logging.getLogger(__name__)
@@ -69,13 +71,14 @@ def open_catalog(
             database=database,
         )
     except AttributeError:
+        LOGGER.debug("No catalog options given as parameters.")
         config_file = app_dir / "catalog.yml"
         if config_file.exists():
             with config_file.open() as f:
-                LOGGER.debug(f"Open Catalog from config file {config_file}")
+                LOGGER.debug("Open Catalog from config file %s", config_file)
                 return catalog_connection_yaml(f.read())
         else:
-            LOGGER.debug(f"Open default Sqlite Catalog in {app_dir}/catalog.db")
+            LOGGER.debug("Open default Sqlite Catalog in %s/catalog.db", app_dir)
             return catalog_connection(path=str(app_dir / "catalog.db"))
 
 
@@ -83,11 +86,10 @@ def init_db(catalog_obj: Catalog) -> None:
     """
     Initialize database
     """
-    LOGGER.info("Initializing the database")
 
     config = get_alembic_config(catalog_obj.engine)
-    LOGGER.debug(config)
     command.upgrade(config, "heads")
+    LOGGER.debug("Initialized the database")
 
 
 def scan_sources(
@@ -100,10 +102,16 @@ def scan_sources(
 ):
     with catalog.managed_session:
         if source_names is not None and len(source_names) > 0:
-            sources = [catalog.get_source(source_name) for source_name in source_names]
+            sources: List[CatSource] = []
+            for source_name in source_names:
+                try:
+                    sources.append(catalog.get_source(source_name))
+                except NoResultFound:
+                    LOGGER.error("Source '%s' not found", source_name)
         else:
             sources = catalog.get_sources()
 
+        LOGGER.debug("%d sources will be scanned", len(sources))
         for source in sources:
             scanner = DbScanner(
                 catalog,
@@ -114,4 +122,7 @@ def scan_sources(
                 exclude_table_regex_str=exclude_table_regex,
             )
             LOGGER.info("Scanning {}".format(scanner.name))
-            scanner.scan()
+            try:
+                scanner.scan()
+            except StopIteration:
+                raise NoMatchesError

@@ -25,6 +25,8 @@ from dbcat.catalog.catalog import Catalog
 from dbcat.catalog.models import CatSource
 from dbcat.catalog.sqlite_extractor import SqliteMetadataExtractor
 
+LOGGER = logging.getLogger(__name__)
+
 
 class DbScanner:
     def __init__(
@@ -135,13 +137,15 @@ class DbScanner:
                 schema_name=record.schema, source=self._source
             )
             schema_count += 1
-
+            LOGGER.debug(f"Start extraction of schema {record.schema}")
             while record:
                 logging.debug(record)
                 if record.schema != current_schema.name:
+                    LOGGER.debug(f"Total tables extracted: {table_count}")
                     current_schema = self._catalog.add_schema(
                         schema_name=record.schema, source=self._source
                     )
+                    LOGGER.debug(f"Start extraction of schema {record.schema}")
                     schema_count += 1
 
                 table = self._catalog.add_table(
@@ -163,7 +167,7 @@ class DbScanner:
                 except StopIteration:
                     record = None
 
-        logging.debug(
+        LOGGER.debug(
             "Scanned {} schemata, {} tables, {} columns".format(
                 schema_count, table_count, column_count
             )

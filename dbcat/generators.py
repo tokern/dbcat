@@ -10,6 +10,12 @@ LOGGER = logging.getLogger(__name__)
 CatalogObject = namedtuple("CatalogObject", ["name", "id"])
 
 
+class NoMatchesError(Exception):
+    """Raise Exception if schema/table/column generators do not find any matches"""
+
+    message = "No columns were scanned. Ensure include/exclude patterns are correct OR no new columns have been added"
+
+
 def filter_objects(
     include_regex_str: Optional[List[str]],
     exclude_regex_str: Optional[List[str]],
