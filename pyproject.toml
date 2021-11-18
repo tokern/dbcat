@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dbcat"
-version = "0.10.0"
+version = "0.10.1"
 description = "Tokern Data Catalog"
 authors = ["Tokern <info@tokern.io>"]
 license = "MIT"
@@ -22,7 +22,7 @@ repository="https://github.com/tokern/dbcat/"
 
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.6,<4"
 click = "*"
 PyYAML = "*"
 amundsen-databuilder = {extras = ["athena", "bigquery", "glue", "rds", "snowflake"], version = "^6"}
