@@ -33,6 +33,30 @@ def test_snowflake_extractor(open_catalog_connection):
     )
 
 
+def test_athena_extractor(open_catalog_connection):
+    catalog, conf = open_catalog_connection
+    with catalog.managed_session:
+        source = catalog.add_source(
+            name="athena_name",
+            source_type="athena",
+            aws_access_key_id="access_key",
+            aws_secret_access_key="secret_key",
+            region_name="us_east_1",
+            database="db",
+            s3_staging_dir="staging_dir",
+        )
+
+        extractor, conn_conf = DbScanner._create_athena_extractor(source)
+        scoped = Scoped.get_scoped_conf(
+            Scoped.get_scoped_conf(conn_conf, extractor.get_scope()),
+            SQLAlchemyExtractor().get_scope(),
+        )
+        assert (
+            scoped.get_string(SQLAlchemyExtractor.CONN_STRING)
+            == "awsathena+rest://access_key:secret_key@athena.us_east_1.amazonaws.com:443/db?s3_staging_dir=staging_dir"
+        )
+
+
 def test_sqlite_extractor(load_all_data):
     params, path = load_all_data
     conn_string_key = f"{SqliteMetadataExtractor().get_scope()}.{SQLAlchemyExtractor().get_scope()}.{SQLAlchemyExtractor.CONN_STRING}"
