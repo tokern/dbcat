@@ -140,7 +140,7 @@ class CatSource(BaseModel):
                 "{schema_name}?s3_staging_dir={s3_staging_dir}".format(
                     aws_access_key_id=quote_plus(self.aws_access_key_id),
                     aws_secret_access_key=quote_plus(self.aws_secret_access_key),
-                    region_name=self.region,
+                    region_name=self.region_name,
                     schema_name=self.database,
                     s3_staging_dir=quote_plus(self.s3_staging_dir),
                 )
