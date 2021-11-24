@@ -138,8 +138,12 @@ class CatSource(BaseModel):
             conn_string = (
                 "awsathena+rest://{aws_access_key_id}:{aws_secret_access_key}@athena.{region_name}.amazonaws.com:443/"
                 "{schema_name}?s3_staging_dir={s3_staging_dir}".format(
-                    aws_access_key_id=quote_plus(self.aws_access_key_id),
-                    aws_secret_access_key=quote_plus(self.aws_secret_access_key),
+                    aws_access_key_id=quote_plus(self.aws_access_key_id)
+                    if self.aws_access_key_id is not None
+                    else "",
+                    aws_secret_access_key=quote_plus(self.aws_secret_access_key)
+                    if self.aws_secret_access_key is not None
+                    else "",
                     region_name=self.region_name,
                     schema_name=self.database,
                     s3_staging_dir=quote_plus(self.s3_staging_dir),
