@@ -42,7 +42,6 @@ def test_athena_extractor(open_catalog_connection):
             aws_access_key_id="access_key",
             aws_secret_access_key="secret_key",
             region_name="us_east_1",
-            database="db",
             s3_staging_dir="staging_dir",
         )
 
@@ -53,7 +52,7 @@ def test_athena_extractor(open_catalog_connection):
         )
         assert (
             scoped.get_string(SQLAlchemyExtractor.CONN_STRING)
-            == "awsathena+rest://access_key:secret_key@athena.us_east_1.amazonaws.com:443/db?s3_staging_dir=staging_dir"
+            == "awsathena+rest://access_key:secret_key@athena.us_east_1.amazonaws.com:443/?s3_staging_dir=staging_dir"
         )
 
 
@@ -64,7 +63,6 @@ def test_athena_extractor_iam(open_catalog_connection):
             name="athena_iam",
             source_type="athena",
             region_name="us_east_1",
-            database="db",
             s3_staging_dir="staging_dir",
         )
 
@@ -75,7 +73,7 @@ def test_athena_extractor_iam(open_catalog_connection):
         )
         assert (
             scoped.get_string(SQLAlchemyExtractor.CONN_STRING)
-            == "awsathena+rest://:@athena.us_east_1.amazonaws.com:443/db?s3_staging_dir=staging_dir"
+            == "awsathena+rest://:@athena.us_east_1.amazonaws.com:443/?s3_staging_dir=staging_dir"
         )
 
 
