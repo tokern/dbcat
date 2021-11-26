@@ -233,7 +233,7 @@ class Catalog(ABC):
         if column_names is not None:
             stmt = stmt.filter(CatColumn.name.in_(column_names))
         if newer_than is not None:
-            stmt = stmt.filter(CatColumn.updated_at >= newer_than)
+            stmt = stmt.filter(CatColumn.updated_at > newer_than)
         stmt = stmt.order_by(CatColumn.sort_order)
         return stmt.all()
 
