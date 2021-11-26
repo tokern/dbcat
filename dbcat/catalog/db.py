@@ -327,7 +327,9 @@ class DbScanner:
         conf = ConfigFactory.from_dict(
             {
                 conn_string_key: source.conn_string,
-                f"{scope}.{AthenaMetadataExtractor.CATALOG_KEY}": source.name,
+                f"{scope}.{AthenaMetadataExtractor.CATALOG_KEY}": "'{}'".format(
+                    source.name
+                ),
             }
         )
 
