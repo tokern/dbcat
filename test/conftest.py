@@ -10,6 +10,7 @@ import pymysql
 import pytest
 from pytest_cases import fixture, parametrize_with_cases
 from sqlalchemy import create_engine
+from sqlalchemy.orm.exc import NoResultFound
 
 from dbcat.api import catalog_connection_yaml, init_db, scan_sources
 from dbcat.catalog import CatSource
@@ -224,15 +225,18 @@ def source_pg(open_catalog_connection, request) -> Tuple[Catalog, str, int]:
     catalog, conf = open_catalog_connection
     host = request.config.getoption("--pg-host")
     with catalog.managed_session:
-        source = catalog.add_source(
-            name="pg_src",
-            source_type="postgresql",
-            uri=host,
-            username="piiuser",
-            password="p11secret",
-            database="piidb",
-            cluster="public",
-        )
+        try:
+            source = catalog.get_source("pg_src")
+        except NoResultFound:
+            source = catalog.add_source(
+                name="pg_src",
+                source_type="postgresql",
+                uri=host,
+                username="piiuser",
+                password="p11secret",
+                database="piidb",
+                cluster="public",
+            )
         source_id = source.id
 
     return catalog, conf, source_id
@@ -255,9 +259,12 @@ def source_sqlite(
     catalog, conf = open_catalog_connection
     sqlite_path = temp_sqlite
     with catalog.managed_session:
-        source = catalog.add_source(
-            name="sqlite_src", source_type="sqlite", uri=str(sqlite_path)
-        )
+        try:
+            source = catalog.get_source("sqlite_src")
+        except NoResultFound:
+            source = catalog.add_source(
+                name="sqlite_src", source_type="sqlite", uri=str(sqlite_path)
+            )
         yield catalog, conf, source.id
 
 

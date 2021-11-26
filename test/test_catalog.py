@@ -5,6 +5,7 @@ from typing import Generator
 
 import pytest
 import yaml
+from sqlalchemy.orm.exc import NoResultFound
 
 import dbcat.api
 from dbcat.api import init_db, open_catalog
@@ -41,23 +42,46 @@ class File:
             content = json.load(file)
 
         with self._catalog.managed_session:
-            source = self._catalog.add_source(
-                name=content["name"], source_type=content["source_type"]
-            )
+            try:
+                source = self._catalog.get_source(content["name"])
+            except NoResultFound:
+                source = self._catalog.add_source(
+                    name=content["name"], source_type=content["source_type"]
+                )
             for s in content["schemata"]:
-                schema = self._catalog.add_schema(s["name"], source=source)
+                try:
+                    schema = self._catalog.get_schema(
+                        source_name=source.name, schema_name=s["name"]
+                    )
+                except NoResultFound:
+                    schema = self._catalog.add_schema(s["name"], source=source)
 
                 for t in s["tables"]:
-                    table = self._catalog.add_table(t["name"], schema)
+                    try:
+                        table = self._catalog.get_table(
+                            source_name=source.name,
+                            schema_name=schema.name,
+                            table_name=t["name"],
+                        )
+                    except NoResultFound:
+                        table = self._catalog.add_table(t["name"], schema)
 
                     index = 0
                     for c in t["columns"]:
-                        self._catalog.add_column(
-                            column_name=c["name"],
-                            data_type=c["data_type"],
-                            sort_order=index,
-                            table=table,
-                        )
+                        try:
+                            self._catalog.get_column(
+                                source_name=source.name,
+                                schema_name=schema.name,
+                                table_name=table.name,
+                                column_name=c["name"],
+                            )
+                        except NoResultFound:
+                            self._catalog.add_column(
+                                column_name=c["name"],
+                                data_type=c["data_type"],
+                                sort_order=index,
+                                table=table,
+                            )
                         index += 1
 
 
@@ -396,7 +420,8 @@ def test_update_column_pii_type(managed_session):
     column = catalog.get_column("test", "default", "page", "page_title")
 
     pii_type: PiiTypes = PiiTypes.PHONE
-    catalog.set_column_pii_type(column, pii_type, "column_scanner")
+    with catalog.commit_context:
+        catalog.set_column_pii_type(column, pii_type, "column_scanner")
 
     updated_column = catalog.get_column("test", "default", "page", "page_title")
     assert updated_column.pii_type == pii_type
@@ -414,60 +439,60 @@ def test_add_sources(open_catalog_connection):
             catalog.add_source(**c)
 
         connections = catalog.search_sources(source_like="%")
-    assert len(connections) == 7
+        assert len(connections) == 7
 
-    # pg
-    pg_connection = connections[1]
-    assert pg_connection.name == "pg"
-    assert pg_connection.source_type == "postgres"
-    assert pg_connection.database == "db_database"
-    assert pg_connection.username == "db_user"
-    assert pg_connection.password == "db_password"
-    assert pg_connection.port == "db_port"
-    assert pg_connection.uri == "db_uri"
+        # pg
+        pg_connection = connections[1]
+        assert pg_connection.name == "pg"
+        assert pg_connection.source_type == "postgres"
+        assert pg_connection.database == "db_database"
+        assert pg_connection.username == "db_user"
+        assert pg_connection.password == "db_password"
+        assert pg_connection.port == "db_port"
+        assert pg_connection.uri == "db_uri"
 
-    # mysql
-    mysql_conn = connections[2]
-    assert mysql_conn.name == "mys"
-    assert mysql_conn.source_type == "mysql"
-    assert mysql_conn.database == "db_database"
-    assert mysql_conn.username == "db_user"
-    assert mysql_conn.password == "db_password"
-    assert mysql_conn.port == "db_port"
-    assert mysql_conn.uri == "db_uri"
+        # mysql
+        mysql_conn = connections[2]
+        assert mysql_conn.name == "mys"
+        assert mysql_conn.source_type == "mysql"
+        assert mysql_conn.database == "db_database"
+        assert mysql_conn.username == "db_user"
+        assert mysql_conn.password == "db_password"
+        assert mysql_conn.port == "db_port"
+        assert mysql_conn.uri == "db_uri"
 
-    # bigquery
-    bq_conn = connections[3]
-    assert bq_conn.name == "bq"
-    assert bq_conn.source_type == "bigquery"
-    assert bq_conn.key_path == "db_key_path"
-    assert bq_conn.project_credentials == "db_creds"
-    assert bq_conn.project_id == "db_project_id"
+        # bigquery
+        bq_conn = connections[3]
+        assert bq_conn.name == "bq"
+        assert bq_conn.source_type == "bigquery"
+        assert bq_conn.key_path == "db_key_path"
+        assert bq_conn.project_credentials == "db_creds"
+        assert bq_conn.project_id == "db_project_id"
 
-    # glue
-    glue_conn = connections[4]
-    assert glue_conn.name == "gl"
-    assert glue_conn.source_type == "glue"
+        # glue
+        glue_conn = connections[4]
+        assert glue_conn.name == "gl"
+        assert glue_conn.source_type == "glue"
 
-    # snowflake
-    sf_conn = connections[5]
-    assert sf_conn.name == "sf"
-    assert sf_conn.source_type == "snowflake"
-    assert sf_conn.database == "db_database"
-    assert sf_conn.username == "db_user"
-    assert sf_conn.password == "db_password"
-    assert sf_conn.account == "db_account"
-    assert sf_conn.role == "db_role"
-    assert sf_conn.warehouse == "db_warehouse"
+        # snowflake
+        sf_conn = connections[5]
+        assert sf_conn.name == "sf"
+        assert sf_conn.source_type == "snowflake"
+        assert sf_conn.database == "db_database"
+        assert sf_conn.username == "db_user"
+        assert sf_conn.password == "db_password"
+        assert sf_conn.account == "db_account"
+        assert sf_conn.role == "db_role"
+        assert sf_conn.warehouse == "db_warehouse"
 
-    # athena
-    athena_conn = connections[6]
-    assert athena_conn.name == "aws_athena"
-    assert athena_conn.source_type == "athena"
-    assert athena_conn.aws_access_key_id == "dummy_key"
-    assert athena_conn.aws_secret_access_key == "dummy_secret"
-    assert athena_conn.region_name == "us-east-1"
-    assert athena_conn.s3_staging_dir == "s3://dummy"
+        # athena
+        athena_conn = connections[6]
+        assert athena_conn.name == "aws_athena"
+        assert athena_conn.source_type == "athena"
+        assert athena_conn.aws_access_key_id == "dummy_key"
+        assert athena_conn.aws_secret_access_key == "dummy_secret"
+        assert athena_conn.region_name == "us-east-1"
+        assert athena_conn.s3_staging_dir == "s3://dummy"
 
 
 @pytest.fixture(scope="module")
@@ -768,11 +793,14 @@ def test_get_tasks(save_catalog: Catalog):
 def test_get_latest_task(save_catalog: Catalog):
     catalog = save_catalog
     with catalog.managed_session:
-        catalog.add_task("piicatcher_latest", 0, "Run 1")
+        with catalog.commit_context:
+            catalog.add_task("piicatcher_latest", 0, "Run 1")
         time.sleep(1)
-        catalog.add_task("piicatcher_latest", 0, "Run 2")
+        with catalog.commit_context:
+            catalog.add_task("piicatcher_latest", 0, "Run 2")
         time.sleep(1)
-        catalog.add_task("piicatcher_latest", 0, "Run 3")
+        with catalog.commit_context:
+            catalog.add_task("piicatcher_latest", 0, "Run 3")
 
     with catalog.managed_session:
         latest = catalog.get_latest_task("piicatcher_latest")

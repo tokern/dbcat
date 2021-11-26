@@ -5,7 +5,6 @@ from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import TIMESTAMP, create_engine, desc, func, update
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session, scoped_session, sessionmaker
 
 from dbcat.catalog.models import (
@@ -32,6 +31,8 @@ class Catalog(ABC):
         self._scoped_session = None
         self._connection_args = kwargs
         self._current_session: scoped_session = None
+        self._session_context_depth = 0
+        self._commit_context_depth = 0
 
     @property
     @abstractmethod
@@ -47,23 +48,62 @@ class Catalog(ABC):
     @property  # type: ignore
     @contextmanager
     def managed_session(self) -> scoped_session:
-        if self._current_session is not None:
-            yield self._current_session
-            return
-
         try:
-            self._current_session = self.get_scoped_session()
+            if self._current_session is None:
+                self._current_session = self.get_scoped_session()
+                logger.debug("Started new managed session: %s", self._current_session)
+            else:
+                logger.debug("Reusing session: %s", self._current_session)
+            self._session_context_depth += 1
             logger.debug(
-                "Started new managed session: {}".format(self._current_session)
+                "Nesting level for session context: %d", self._session_context_depth
             )
             yield self._current_session
+        except Exception:
+            self._current_session.rollback()
+            logger.debug("Rolled back session: %s", self._current_session)
+            raise
+        else:
+            self._current_session.commit()
+            logger.debug("Committed session: %s", self._current_session)
         finally:
-            if self._current_session is not None:
-                logger.debug(
-                    "Removed managed session: {}".format(self._current_session)
-                )
+            self._session_context_depth -= 1
+            logger.debug(
+                "Un-nesting level for session context: %d", self._session_context_depth
+            )
+            assert self._session_context_depth >= 0
+
+            if self._session_context_depth == 0:
+                assert self._current_session is not None
+                logger.debug("Removed managed session: %s", self._current_session)
                 self._current_session.remove()
-            self._current_session = None
+                self._current_session = None
+
+    @property  # type: ignore
+    @contextmanager
+    def commit_context(self):
+        try:
+            self._commit_context_depth += 1
+            logger.debug(
+                "Nesting level for commit context: %d", self._commit_context_depth
+            )
+            yield self._current_session
+        except Exception:
+            self._current_session.rollback()
+            logger.debug(
+                "Rolled back transaction due to exception. Session: %s",
+                self._current_session,
+            )
+            raise
+        else:
+            self._current_session.commit()
+            logger.debug("Committed transaction. Session: %s", self._current_session)
+        finally:
+            self._commit_context_depth -= 1
+            logger.debug(
+                "Un-nesting level for commit context: %d", self._commit_context_depth
+            )
+            assert self._commit_context_depth >= 0
 
     def close(self):
         if self._engine is not None:
@@ -74,17 +114,13 @@ class Catalog(ABC):
     ) -> Base:
         session: scoped_session = self._current_session
 
-        try:
-            if create_method_kwargs is None:
-                create_method_kwargs = {}
-            create_method_kwargs.update(kwargs or {})
-            created = getattr(model, create_method, model)(**create_method_kwargs)
-            session.add(created)
-            session.commit()
-            return created
-        except IntegrityError:
-            session.rollback()
-            return session.query(model).filter_by(**kwargs).one()
+        if create_method_kwargs is None:
+            create_method_kwargs = {}
+        create_method_kwargs.update(kwargs or {})
+        created = getattr(model, create_method, model)(**create_method_kwargs)
+        session.add(created)
+        session.flush()
+        return created
 
     def add_source(self, name: str, source_type: str, **kwargs) -> CatSource:
         return self._create(CatSource, name=name, source_type=source_type, **kwargs)
@@ -144,6 +180,7 @@ class Catalog(ABC):
         )
 
     def add_task(self, app_name: str, status: int, message: str) -> Task:
+        logger.debug("Added task")
         return self._create(
             model=Task, app_name=app_name, status=status, message=message
         )
@@ -425,7 +462,12 @@ class Catalog(ABC):
             .values(dict(pii_type=pii_type, pii_plugin=pii_plugin))
         )
         self._current_session.execute(stmt)
-        self._current_session.commit()
+        self._current_session.flush()
+        logger.debug(
+            "Set PII Type for column: %s, session: %s",
+            column.name,
+            str(self._current_session),
+        )
 
 
 class PGCatalog(Catalog):

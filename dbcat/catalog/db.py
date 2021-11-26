@@ -20,6 +20,7 @@ from databuilder.extractor.snowflake_metadata_extractor import (
 from databuilder.extractor.sql_alchemy_extractor import SQLAlchemyExtractor
 from databuilder.models.table_metadata import TableMetadata
 from pyhocon import ConfigFactory, ConfigTree
+from sqlalchemy.orm.exc import NoResultFound
 
 from dbcat.catalog.catalog import Catalog
 from dbcat.catalog.models import CatSource
@@ -133,33 +134,58 @@ class DbScanner:
             extractor.init(Scoped.get_scoped_conf(self._conf, extractor.get_scope()))
 
             record: TableMetadata = next(self._filter_rows(extractor))
-            current_schema = self._catalog.add_schema(
-                schema_name=record.schema, source=self._source
-            )
+            try:
+                current_schema = self._catalog.get_schema(
+                    source_name=self._source.name, schema_name=record.schema
+                )
+            except NoResultFound:
+                current_schema = self._catalog.add_schema(
+                    schema_name=record.schema, source=self._source
+                )
             schema_count += 1
             LOGGER.info(f"Start extraction of schema {record.schema}")
             while record:
                 LOGGER.debug(record)
                 if record.schema != current_schema.name:
                     LOGGER.debug(f"Total tables extracted: {table_count}")
-                    current_schema = self._catalog.add_schema(
-                        schema_name=record.schema, source=self._source
-                    )
+                    try:
+                        current_schema = self._catalog.get_schema(
+                            source_name=self._source.name, schema_name=record.schema
+                        )
+                    except NoResultFound:
+                        current_schema = self._catalog.add_schema(
+                            schema_name=record.schema, source=self._source
+                        )
                     LOGGER.debug(f"Start extraction of schema {record.schema}")
                     schema_count += 1
 
-                table = self._catalog.add_table(
-                    table_name=record.name, schema=current_schema
-                )
+                try:
+                    table = self._catalog.get_table(
+                        source_name=self._source.name,
+                        schema_name=current_schema.name,
+                        table_name=record.name,
+                    )
+                except NoResultFound:
+                    table = self._catalog.add_table(
+                        table_name=record.name, schema=current_schema
+                    )
                 table_count += 1
                 index = 0
                 for c in record.columns:
-                    self._catalog.add_column(
-                        column_name=c.name,
-                        data_type=c.type,
-                        sort_order=index,
-                        table=table,
-                    )
+                    try:
+                        self._catalog.get_column(
+                            source_name=self._source.name,
+                            schema_name=current_schema.name,
+                            table_name=table.name,
+                            column_name=c.name,
+                        )
+                    except NoResultFound:
+                        self._catalog.add_column(
+                            column_name=c.name,
+                            data_type=c.type,
+                            sort_order=index,
+                            table=table,
+                        )
                     index += 1
                     column_count += 1
                 try:
