@@ -37,7 +37,7 @@ neo4j_password = "test"
 
 LOGGER = logging.getLogger(__name__)
 
-tokern_connection = {"path": "/home/rajat/.config/piicatcher/catalog.db"}
+tokern_connection = {"path": "/home/rajat/.config/tokern/catalog.db"}
 
 
 def extract_catalog_job():
@@ -47,7 +47,7 @@ def extract_catalog_job():
 
     job_config = ConfigFactory.from_dict(
         {
-            f"tokern.catalog.{CatalogExtractor.CATALOG_OBJ}": ConfigFactory.from_dict(
+            f"tokern.catalog.{CatalogExtractor.CATALOG_CONFIG}": ConfigFactory.from_dict(
                 tokern_connection
             ),
             f"loader.filesystem_csv_neo4j.{FsNeo4jCSVLoader.NODE_DIR_PATH}": node_files_folder,

@@ -138,7 +138,7 @@ class CatalogSource(Source):
                                     tags=[
                                         TagAssociationClass("urn:li:tag:pii"),
                                         TagAssociationClass(
-                                            f"urn.li.tag.{column.pii_type.name}"
+                                            f"urn:li:tag:{column.pii_type.name.lower()}"
                                         ),
                                     ]
                                 )
