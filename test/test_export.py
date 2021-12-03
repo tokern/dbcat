@@ -33,4 +33,5 @@ def test_simple_datahub_extract(load_source):
     )
     datahub_source.config.source_names = [source.name]
 
-    assert len(list(datahub_source.get_workunits())) == 3
+    wu_list = list(datahub_source.get_workunits())
+    assert len(wu_list) == 3
