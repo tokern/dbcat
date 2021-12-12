@@ -10,7 +10,6 @@ from databuilder.extractor.base_postgres_metadata_extractor import (
     BasePostgresMetadataExtractor,
 )
 from databuilder.extractor.bigquery_metadata_extractor import BigQueryMetadataExtractor
-from databuilder.extractor.glue_extractor import GlueExtractor
 from databuilder.extractor.mysql_metadata_extractor import MysqlMetadataExtractor
 from databuilder.extractor.postgres_metadata_extractor import PostgresMetadataExtractor
 from databuilder.extractor.redshift_metadata_extractor import RedshiftMetadataExtractor
@@ -46,8 +45,6 @@ class DbScanner:
         self._source = source
         if source.source_type == "bigquery":
             self._extractor, self._conf = DbScanner._create_big_query_extractor(source)
-        elif source.source_type == "glue":
-            self._extractor, self._conf = DbScanner._create_glue_extractor(source)
         elif source.source_type == "mysql":
             self._extractor, self._conf = DbScanner._create_mysql_extractor(source)
         elif source.source_type == "postgresql":
@@ -242,19 +239,6 @@ class DbScanner:
         return extractor, conf
 
     @staticmethod
-    def _create_glue_extractor(source: CatSource) -> Tuple[GlueExtractor, Any]:
-        extractor = GlueExtractor()
-
-        conf = ConfigFactory.from_dict(
-            {
-                f"extractor.glue.{GlueExtractor.CLUSTER_KEY}": "",  # TODO Setup Glue Config correctly
-                f"extractor.glue.{GlueExtractor.FILTER_KEY}": [],
-            }
-        )
-
-        return extractor, conf
-
-    @staticmethod
     def _create_mysql_extractor(
         source: CatSource,
     ) -> Tuple[MysqlMetadataExtractor, Any]:
@@ -310,7 +294,6 @@ class DbScanner:
                 f"{scope}.{SnowflakeMetadataExtractor.CLUSTER_KEY}": source.cluster,
                 f"{scope}.{SnowflakeMetadataExtractor.DATABASE_KEY}": source.database,
                 f"{scope}.{SnowflakeMetadataExtractor.SNOWFLAKE_DATABASE_KEY}": source.database,
-                # f"{scope}.{SnowflakeMetadataExtractor.WHERE_CLAUSE_SUFFIX_KEY}": connection.where_clause_suffix,
             }
         )
 
