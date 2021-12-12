@@ -34,13 +34,11 @@ class CatSource(BaseModel):
     id = Column(Integer, primary_key=True)
     source_type = Column(String)
     name = Column(String, unique=True)
-    dialect = Column(String)
     uri = Column(String)
     port = Column(String)
     username = Column(String)
     password = Column(String)
     database = Column(String)
-    instance = Column(String)
     cluster = Column(String)
     project_id = Column(String)
     project_credentials = Column(String)
@@ -69,13 +67,11 @@ class CatSource(BaseModel):
         self,
         source_type: str,
         name: str,
-        dialect: Optional[str] = None,
         uri: Optional[str] = None,
         port: Optional[int] = None,
         username: Optional[str] = None,
         password: Optional[str] = None,
         database: Optional[str] = None,
-        instance: Optional[str] = None,
         cluster: Optional[str] = None,
         project_id: Optional[str] = None,
         project_credentials: Optional[str] = None,
@@ -97,12 +93,10 @@ class CatSource(BaseModel):
         if source_type is not None:
             source_type = source_type.lower()
         self.source_type = source_type
-        self.dialect = dialect
         self.username = username
         self.password = password
         self.name = name
         self.database = database
-        self.instance = instance
         self.cluster = cluster
         self.project_id = project_id
         self.project_credentials = project_credentials
