@@ -18,9 +18,9 @@ from dbcat.catalog.models import (
     Job,
     JobExecution,
     JobExecutionStatus,
-    PiiTypes,
     Task,
 )
+from dbcat.catalog.pii_types import PiiType
 
 logger = logging.getLogger("dbcat.Catalog")
 
@@ -454,7 +454,7 @@ class Catalog(ABC):
         )
 
     def set_column_pii_type(
-        self, column: CatColumn, pii_type: PiiTypes, pii_plugin: str
+        self, column: CatColumn, pii_type: PiiType, pii_plugin: str
     ):
         stmt = (
             update(CatColumn)
