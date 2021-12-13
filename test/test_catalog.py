@@ -19,8 +19,8 @@ from dbcat.catalog.models import (
     Job,
     JobExecution,
     JobExecutionStatus,
-    PiiTypes,
 )
+from dbcat.catalog.pii_types import PiiType
 
 logger = logging.getLogger("dbcat.test")
 
@@ -419,7 +419,12 @@ def test_update_column_pii_type(managed_session):
     catalog = managed_session
     column = catalog.get_column("test", "default", "page", "page_title")
 
-    pii_type: PiiTypes = PiiTypes.PHONE
+    class Phone(PiiType):
+        name = "Phone"
+        type = "phone"
+        pass
+
+    pii_type: PiiType = Phone()
     with catalog.commit_context:
         catalog.set_column_pii_type(column, pii_type, "column_scanner")
 

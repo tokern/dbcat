@@ -2,16 +2,17 @@ import enum
 from typing import Optional
 from urllib.parse import quote_plus
 
-import sqlalchemy
 from snowflake.sqlalchemy import URL
 from sqlalchemy import (
     JSON,
     TIMESTAMP,
+    VARCHAR,
     Column,
     Enum,
     ForeignKey,
     Integer,
     String,
+    TypeDecorator,
     UniqueConstraint,
 )
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
@@ -19,6 +20,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy_mixins.repr import ReprMixin
 from sqlalchemy_mixins.serialize import SerializeMixin
 from sqlalchemy_mixins.timestamp import TimestampsMixin
+
+from dbcat.catalog.pii_types import PiiType
 
 Base: DeclarativeMeta = declarative_base()
 
@@ -240,25 +243,25 @@ class CatTable(BaseModel):
         return hash(self.fqdn)
 
 
-@enum.unique
-class PiiTypes(enum.Enum):
-    """PiiTypes enumerates the different types of PII data"""
+class PiiColumnType(TypeDecorator):
+    def process_literal_param(self, value, dialect):
+        pass
 
-    NONE = enum.auto()
-    UNSUPPORTED = enum.auto()
-    PHONE = enum.auto()
-    EMAIL = enum.auto()
-    CREDIT_CARD = enum.auto()
-    ADDRESS = enum.auto()
-    PERSON = enum.auto()
-    LOCATION = enum.auto()
-    BIRTH_DATE = enum.auto()
-    GENDER = enum.auto()
-    NATIONALITY = enum.auto()
-    IP_ADDRESS = enum.auto()
-    SSN = enum.auto()
-    USER_NAME = enum.auto()
-    PASSWORD = enum.auto()
+    @property
+    def python_type(self):
+        pass
+
+    impl = VARCHAR
+
+    def process_bind_param(self, value: Optional[PiiType], dialect) -> Optional[str]:
+        if value is not None:
+            return value.json()
+        return value
+
+    def process_result_value(self, value, dialect) -> Optional[PiiType]:
+        if value is not None:
+            value = PiiType.parse_raw(value)
+        return value
 
 
 class CatColumn(BaseModel):
@@ -268,7 +271,7 @@ class CatColumn(BaseModel):
     name = Column(String)
     data_type = Column(String)
     sort_order = Column(Integer)
-    pii_type = Column(sqlalchemy.types.Enum(PiiTypes))
+    pii_type = Column(PiiColumnType())
     pii_plugin = Column(String)
     table_id = Column(Integer, ForeignKey("tables.id"))
     table = relationship("CatTable", back_populates="columns", lazy="joined")
