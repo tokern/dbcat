@@ -4,8 +4,8 @@ from typing import List, Optional
 
 import typer
 
+import dbcat.settings
 from dbcat.api import init_db, open_catalog, scan_sources
-from dbcat.app_state import app_state
 from dbcat.generators import NoMatchesError
 
 schema_help_text = """
@@ -61,7 +61,16 @@ def scan(
         None, help=exclude_table_help_text
     ),
 ):
-    catalog = open_catalog(**app_state["catalog_connection"])
+    catalog = open_catalog(
+        app_dir=dbcat.settings.APP_DIR,
+        secret=dbcat.settings.CATALOG_SECRET,
+        path=dbcat.settings.CATALOG_PATH,
+        host=dbcat.settings.CATALOG_HOST,
+        port=dbcat.settings.CATALOG_PORT,
+        user=dbcat.settings.CATALOG_USER,
+        password=dbcat.settings.CATALOG_PASSWORD,
+        database=dbcat.settings.CATALOG_DB,
+    )
     with closing(catalog):
         init_db(catalog)
         try:
@@ -85,7 +94,16 @@ def add_sqlite(
     name: str = typer.Option(..., help="A memorable name for the database"),
     path: Path = typer.Option(..., help="File path to SQLite database"),
 ):
-    catalog = open_catalog(**app_state["catalog_connection"])
+    catalog = open_catalog(
+        app_dir=dbcat.settings.APP_DIR,
+        secret=dbcat.settings.CATALOG_SECRET,
+        path=dbcat.settings.CATALOG_PATH,
+        host=dbcat.settings.CATALOG_HOST,
+        port=dbcat.settings.CATALOG_PORT,
+        user=dbcat.settings.CATALOG_USER,
+        password=dbcat.settings.CATALOG_PASSWORD,
+        database=dbcat.settings.CATALOG_DB,
+    )
     with closing(catalog):
         init_db(catalog)
 
@@ -103,7 +121,16 @@ def add_postgresql(
     uri: str = typer.Option(..., help="Hostname or URI of the database"),
     port: Optional[int] = typer.Option(None, help="Port number of the database"),
 ):
-    catalog = open_catalog(**app_state["catalog_connection"])
+    catalog = open_catalog(
+        app_dir=dbcat.settings.APP_DIR,
+        secret=dbcat.settings.CATALOG_SECRET,
+        path=dbcat.settings.CATALOG_PATH,
+        host=dbcat.settings.CATALOG_HOST,
+        port=dbcat.settings.CATALOG_PORT,
+        user=dbcat.settings.CATALOG_USER,
+        password=dbcat.settings.CATALOG_PASSWORD,
+        database=dbcat.settings.CATALOG_DB,
+    )
     with closing(catalog):
         init_db(catalog)
 
@@ -129,7 +156,16 @@ def add_mysql(
     uri: str = typer.Option(..., help="Hostname or URI of the database"),
     port: Optional[int] = typer.Option(None, help="Port number of the database"),
 ):
-    catalog = open_catalog(**app_state["catalog_connection"])
+    catalog = open_catalog(
+        app_dir=dbcat.settings.APP_DIR,
+        secret=dbcat.settings.CATALOG_SECRET,
+        path=dbcat.settings.CATALOG_PATH,
+        host=dbcat.settings.CATALOG_HOST,
+        port=dbcat.settings.CATALOG_PORT,
+        user=dbcat.settings.CATALOG_USER,
+        password=dbcat.settings.CATALOG_PASSWORD,
+        database=dbcat.settings.CATALOG_DB,
+    )
     with closing(catalog):
         init_db(catalog)
 
@@ -143,7 +179,7 @@ def add_mysql(
                 uri=uri,
                 port=port,
             )
-        typer.echo("Registered Postgres database {}".format(name))
+        typer.echo("Registered mysql database {}".format(name))
 
 
 @app.command()
@@ -155,7 +191,16 @@ def add_redshift(
     uri: str = typer.Option(..., help="Hostname or URI of the database"),
     port: Optional[int] = typer.Option(None, help="Port number of the database"),
 ):
-    catalog = open_catalog(**app_state["catalog_connection"])
+    catalog = open_catalog(
+        app_dir=dbcat.settings.APP_DIR,
+        secret=dbcat.settings.CATALOG_SECRET,
+        path=dbcat.settings.CATALOG_PATH,
+        host=dbcat.settings.CATALOG_HOST,
+        port=dbcat.settings.CATALOG_PORT,
+        user=dbcat.settings.CATALOG_USER,
+        password=dbcat.settings.CATALOG_PASSWORD,
+        database=dbcat.settings.CATALOG_DB,
+    )
     with closing(catalog):
         init_db(catalog)
 
@@ -169,7 +214,7 @@ def add_redshift(
                 uri=uri,
                 port=port,
             )
-        typer.echo("Registered MySQL database {}".format(name))
+        typer.echo("Registered Redshift database {}".format(name))
 
 
 @app.command()
@@ -182,7 +227,16 @@ def add_snowflake(
     warehouse: str = typer.Option(..., help="Snowflake Warehouse Name"),
     role: str = typer.Option(..., help="Snowflake Role Name"),
 ):
-    catalog = open_catalog(**app_state["catalog_connection"])
+    catalog = open_catalog(
+        app_dir=dbcat.settings.APP_DIR,
+        secret=dbcat.settings.CATALOG_SECRET,
+        path=dbcat.settings.CATALOG_PATH,
+        host=dbcat.settings.CATALOG_HOST,
+        port=dbcat.settings.CATALOG_PORT,
+        user=dbcat.settings.CATALOG_USER,
+        password=dbcat.settings.CATALOG_PASSWORD,
+        database=dbcat.settings.CATALOG_DB,
+    )
     with closing(catalog):
         init_db(catalog)
 
@@ -208,7 +262,16 @@ def add_athena(
     region_name: str = typer.Option(..., help="AWS Region Name"),
     s3_staging_dir: str = typer.Option(..., help="S3 Staging Dir"),
 ):
-    catalog = open_catalog(**app_state["catalog_connection"])
+    catalog = open_catalog(
+        app_dir=dbcat.settings.APP_DIR,
+        secret=dbcat.settings.CATALOG_SECRET,
+        path=dbcat.settings.CATALOG_PATH,
+        host=dbcat.settings.CATALOG_HOST,
+        port=dbcat.settings.CATALOG_PORT,
+        user=dbcat.settings.CATALOG_USER,
+        password=dbcat.settings.CATALOG_PASSWORD,
+        database=dbcat.settings.CATALOG_DB,
+    )
     with closing(catalog):
         init_db(catalog)
 

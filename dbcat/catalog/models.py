@@ -20,10 +20,19 @@ from sqlalchemy.orm import relationship
 from sqlalchemy_mixins.repr import ReprMixin
 from sqlalchemy_mixins.serialize import SerializeMixin
 from sqlalchemy_mixins.timestamp import TimestampsMixin
+from sqlalchemy_utils.types.encrypted.encrypted_type import (
+    FernetEngine,
+    StringEncryptedType,
+)
 
+import dbcat.settings
 from dbcat.catalog.pii_types import PiiType
 
 Base: DeclarativeMeta = declarative_base()
+
+
+def get_secret_key():
+    return dbcat.settings.CATALOG_SECRET
 
 
 class BaseModel(Base, ReprMixin, SerializeMixin, TimestampsMixin):
@@ -40,11 +49,13 @@ class CatSource(BaseModel):
     uri = Column(String)
     port = Column(String)
     username = Column(String)
-    password = Column(String)
+    password = Column(StringEncryptedType(String, get_secret_key, FernetEngine))
     database = Column(String)
     cluster = Column(String)
     project_id = Column(String)
-    project_credentials = Column(String)
+    project_credentials = Column(
+        StringEncryptedType(String, get_secret_key, FernetEngine)
+    )
     page_size = Column(String)
     filter_key = Column(String)
     included_tables_regex = Column(String)
@@ -52,8 +63,12 @@ class CatSource(BaseModel):
     account = Column(String)
     role = Column(String)
     warehouse = Column(String)
-    aws_access_key_id = Column(String)
-    aws_secret_access_key = Column(String)
+    aws_access_key_id = Column(
+        StringEncryptedType(String, get_secret_key, FernetEngine)
+    )
+    aws_secret_access_key = Column(
+        StringEncryptedType(String, get_secret_key, FernetEngine)
+    )
     region_name = Column(String)
     s3_staging_dir = Column(String)
 

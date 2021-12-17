@@ -41,6 +41,7 @@ class CatalogConfig(ConfigModel):
     database: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
+    secret: str
 
     source_names: Optional[List[str]] = None
     include_schema_regex: Optional[List[str]] = None
@@ -91,7 +92,8 @@ class CatalogSource(Source):
     def get_workunits(self) -> Iterable[WorkUnit]:
         catalog = open_catalog(
             app_dir=Path(typer.get_app_dir("tokern")),
-            path=self.config.path,
+            secret=self.config.secret,
+            path=Path(self.config.path) if self.config.path is not None else None,
             user=self.config.user,
             password=self.config.password,
             host=self.config.host,

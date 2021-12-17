@@ -2060,6 +2060,32 @@ six = "*"
 SQLAlchemy = ">=1.0"
 
 [[package]]
+name = "sqlalchemy-utils"
+version = "0.37.9"
+description = "Various utility functions for SQLAlchemy."
+category = "main"
+optional = false
+python-versions = "~=3.4"
+
+[package.dependencies]
+six = "*"
+SQLAlchemy = ">=1.0"
+
+[package.extras]
+arrow = ["arrow (>=0.3.4)"]
+babel = ["Babel (>=1.3)"]
+color = ["colour (>=0.0.4)"]
+encrypted = ["cryptography (>=0.6)"]
+intervals = ["intervals (>=0.7.1)"]
+password = ["passlib (>=1.6,<2.0)"]
+pendulum = ["pendulum (>=2.0.5)"]
+phone = ["phonenumbers (>=5.9.2)"]
+test = ["pytest (>=2.7.1)", "Pygments (>=1.2)", "Jinja2 (>=2.3)", "docutils (>=0.10)", "flexmock (>=0.9.7)", "mock (==2.0.0)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pg8000 (>=1.12.4)", "pytz (>=2014.2)", "python-dateutil (>=2.6)", "pymysql", "flake8 (>=2.4.0)", "isort (>=4.2.2)", "pyodbc", "backports.zoneinfo"]
+test_all = ["Babel (>=1.3)", "Jinja2 (>=2.3)", "Pygments (>=1.2)", "arrow (>=0.3.4)", "colour (>=0.0.4)", "cryptography (>=0.6)", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "furl (>=0.4.1)", "intervals (>=0.7.1)", "isort (>=4.2.2)", "mock (==2.0.0)", "passlib (>=1.6,<2.0)", "pendulum (>=2.0.5)", "pg8000 (>=1.12.4)", "phonenumbers (>=5.9.2)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (>=2.7.1)", "python-dateutil", "python-dateutil (>=2.6)", "pytz (>=2014.2)", "backports.zoneinfo"]
+timezone = ["python-dateutil"]
+url = ["furl (>=0.4.1)"]
+
+[[package]]
 name = "stackprinter"
 version = "0.2.5"
 description = "Debug-friendly stack traces, with variable values and semantic highlighting"
@@ -2411,7 +2437,7 @@ datahub = ["acryl-datahub", "great-expectations"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.1,<3.9"
-content-hash = "60a3db94ea6cf968f709fd60b1f49745eae1b6e1f09f95b6e5ef5c01013ff13b"
+content-hash = "0d632e77a26b05d90801614d339fc7675665ebcb040e6bb3dee38fe0a03ba910"
 
 [metadata.files]
 acryl-datahub = [
@@ -3641,6 +3667,10 @@ sqlalchemy = [
 sqlalchemy-mixins = [
     {file = "sqlalchemy_mixins-1.5-py3-none-any.whl", hash = "sha256:c512f8393679d7e5effba742fb1b2d5e242d8c44d4d9e20abd0f3ba5136bc32d"},
     {file = "sqlalchemy_mixins-1.5.tar.gz", hash = "sha256:32b4ad1b989c1dfbf5570f604283c8a2c9b7a03b33c71b54d38d9abb1f2de40e"},
+]
+sqlalchemy-utils = [
+    {file = "SQLAlchemy-Utils-0.37.9.tar.gz", hash = "sha256:4667edbdcb1ece011076b69772ef524bfbb17cc97e03f11ee6b85d98e7741d61"},
+    {file = "SQLAlchemy_Utils-0.37.9-py3-none-any.whl", hash = "sha256:bb6f4da8ac044cb0dd4d0278b1fb434141a5ee9d1881c757a076830ddbb04160"},
 ]
 stackprinter = [
     {file = "stackprinter-0.2.5-py3-none-any.whl", hash = "sha256:e6770d1f932992caa37f1c734ca40429ee7358163ec7f262dcd3c8371b260006"},

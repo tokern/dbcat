@@ -8,6 +8,7 @@ import yaml
 from sqlalchemy.orm.exc import NoResultFound
 
 import dbcat.api
+from dbcat import settings
 from dbcat.api import init_db, open_catalog
 from dbcat.catalog.catalog import Catalog, SqliteCatalog
 from dbcat.catalog.models import (
@@ -814,7 +815,7 @@ def test_get_latest_task(save_catalog: Catalog):
 
 
 def test_default_catalog(tmpdir):
-    catalog = open_catalog(app_dir=tmpdir)
+    catalog = open_catalog(app_dir=tmpdir, secret=settings.DEFAULT_CATALOG_SECRET)
     default_catalog = tmpdir / "catalog.db"
     assert isinstance(catalog, SqliteCatalog)
     init_db(catalog)
@@ -826,5 +827,5 @@ def test_catalog_config_file(mocker, tmpdir):
     with config_file.open("w") as f:
         f.write("test_catalog_config")
     mocker.patch("dbcat.api.catalog_connection_yaml")
-    open_catalog(app_dir=tmpdir)
+    open_catalog(app_dir=tmpdir, secret=settings.DEFAULT_CATALOG_SECRET)
     dbcat.api.catalog_connection_yaml.assert_called_once_with("test_catalog_config")

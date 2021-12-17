@@ -5,10 +5,10 @@ from typing import Optional
 
 import typer
 
+import dbcat.settings
 from dbcat import __version__
-from dbcat.api import OutputFormat
-from dbcat.app_state import app_state
 from dbcat.cli import app as catalog_app
+from dbcat.settings import OutputFormat
 
 app = typer.Typer()
 
@@ -86,6 +86,10 @@ def cli(
     catalog_database: str = typer.Option(
         None, help="database of Postgres database. Use if catalog is a database."
     ),
+    catalog_secret: str = typer.Option(
+        "TOKERN_CATALOG_SECRET",
+        help="Secret to encrypt sensitive data like passwords in the catalog.",
+    ),
     version: Optional[bool] = typer.Option(
         None, "--version", callback=version_callback
     ),
@@ -96,16 +100,15 @@ def cli(
     app_dir_path = Path(app_dir)
     app_dir_path.mkdir(parents=True, exist_ok=True)
 
-    app_state["catalog_connection"] = {
-        "path": catalog_path,
-        "user": catalog_user,
-        "password": catalog_password,
-        "host": catalog_host,
-        "port": catalog_port,
-        "database": catalog_database,
-        "app_dir": app_dir_path,
-    }
-    app_state["output_format"] = output_format
+    dbcat.settings.CATALOG_PATH = catalog_path
+    dbcat.settings.CATALOG_USER = catalog_user
+    dbcat.settings.CATALOG_PASSWORD = catalog_password
+    dbcat.settings.CATALOG_HOST = catalog_host
+    dbcat.settings.CATALOG_PORT = catalog_port
+    dbcat.settings.CATALOG_DB = catalog_database
+    dbcat.settings.CATALOG_SECRET = catalog_secret
+    dbcat.settings.APP_DIR = app_dir_path
+    dbcat.settings.OUTPUT_FORMAT = output_format
 
 
 app.add_typer(catalog_app, name="catalog")
