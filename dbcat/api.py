@@ -1,5 +1,4 @@
 import logging
-from enum import Enum
 from pathlib import Path
 from typing import List, Optional
 
@@ -7,6 +6,7 @@ import yaml
 from alembic import command
 from sqlalchemy.orm.exc import NoResultFound
 
+import dbcat.settings
 from dbcat.catalog import Catalog, CatSource
 from dbcat.catalog.catalog import PGCatalog, SqliteCatalog
 from dbcat.catalog.db import DbScanner
@@ -16,19 +16,17 @@ from dbcat.migrations import get_alembic_config
 LOGGER = logging.getLogger(__name__)
 
 
-class OutputFormat(str, Enum):
-    tabular = "tabular"
-    json = "json"
-
-
 def catalog_connection(
-    path: str = None,
+    secret: str,
+    path: Optional[Path] = None,
     host: str = None,
     port: int = None,
     user: str = None,
     password: str = None,
     database: str = None,
 ) -> Catalog:
+    dbcat.settings.CATALOG_SECRET = secret
+
     if (
         host is not None
         and user is not None
@@ -49,12 +47,15 @@ def catalog_connection(
 def catalog_connection_yaml(config: str) -> Catalog:
     config_yaml = yaml.safe_load(config)
     LOGGER.debug("Open Catalog from config")
+    if "path" in config_yaml and config_yaml["path"] is not None:
+        config_yaml["path"] = Path(config_yaml["path"])
     return catalog_connection(**config_yaml["catalog"])
 
 
 def open_catalog(
     app_dir: Path,
-    path: str = None,
+    secret: str,
+    path: Optional[Path] = None,
     host: str = None,
     port: int = None,
     user: str = None,
@@ -63,6 +64,7 @@ def open_catalog(
 ) -> Catalog:
     try:
         return catalog_connection(
+            secret=secret,
             path=path,
             host=host,
             port=port,
@@ -79,7 +81,10 @@ def open_catalog(
                 return catalog_connection_yaml(f.read())
         else:
             LOGGER.debug("Open default Sqlite Catalog in %s/catalog.db", app_dir)
-            return catalog_connection(path=str(app_dir / "catalog.db"))
+            return catalog_connection(
+                path=app_dir / "catalog.db",
+                secret=dbcat.settings.DEFAULT_CATALOG_SECRET,
+            )
 
 
 def init_db(catalog_obj: Catalog) -> None:

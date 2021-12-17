@@ -12,6 +12,7 @@ from pytest_cases import fixture, parametrize_with_cases
 from sqlalchemy import create_engine
 from sqlalchemy.orm.exc import NoResultFound
 
+from dbcat import settings
 from dbcat.api import catalog_connection_yaml, init_db, scan_sources
 from dbcat.catalog import CatSource
 from dbcat.catalog.catalog import Catalog
@@ -23,12 +24,16 @@ catalog:
   host: {host}
   port: 5432
   database: piidb
+  secret: {secret}
 """
 
 
 @pytest.fixture(scope="module")
 def root_connection(request):
-    conf = postgres_conf.format(host=request.config.getoption("--pg-host"))
+    conf = postgres_conf.format(
+        host=request.config.getoption("--pg-host"),
+        secret=settings.DEFAULT_CATALOG_SECRET,
+    )
     with closing(catalog_connection_yaml(conf)) as conn:
         yield conn
 
@@ -36,6 +41,7 @@ def root_connection(request):
 sqlite_catalog_conf = """
 catalog:
   path: {path}
+  secret: {secret}
 """
 
 
@@ -50,7 +56,9 @@ def temp_sqlite_path(tmpdir_factory):
 
 
 def case_setup_sqlite(temp_sqlite_path):
-    return sqlite_catalog_conf.format(path=temp_sqlite_path)
+    return sqlite_catalog_conf.format(
+        path=temp_sqlite_path, secret=settings.DEFAULT_CATALOG_SECRET
+    )
 
 
 pg_catalog_conf = """
@@ -59,6 +67,7 @@ catalog:
   password: catal0g_passw0rd
   host: {host}
   database: tokern
+  secret: {secret}
 """
 
 
@@ -76,7 +85,10 @@ def pytest_addoption(parser):
 
 @fixture(scope="module")
 def setup_pg_catalog(request):
-    conf = postgres_conf.format(host=request.config.getoption("--pg-host"))
+    conf = postgres_conf.format(
+        host=request.config.getoption("--pg-host"),
+        secret=settings.DEFAULT_CATALOG_SECRET,
+    )
     with closing(catalog_connection_yaml(conf)) as root_connection:
         with root_connection.engine.connect() as conn:
             conn.execute("CREATE USER catalog_user PASSWORD 'catal0g_passw0rd'")
@@ -87,7 +99,10 @@ def setup_pg_catalog(request):
                 "GRANT ALL PRIVILEGES ON DATABASE tokern TO catalog_user"
             )
 
-        yield pg_catalog_conf.format(host=request.config.getoption("--pg-host"))
+        yield pg_catalog_conf.format(
+            host=request.config.getoption("--pg-host"),
+            secret=settings.DEFAULT_CATALOG_SECRET,
+        )
 
         with root_connection.engine.connect() as conn:
             conn.execution_options(isolation_level="AUTOCOMMIT").execute(
