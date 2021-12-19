@@ -28,10 +28,8 @@ column-level lineage.
 
     python3 -m venv .env
     source .env/bin/activate
-    pip install piicatcher
-
-    # configure the application
-    
+    pip install dbcat
+ 
     dbcat catalog add-sqlite --name sample --path <path to sqlite db>
     dbcat catalog scan --source-name sample
 

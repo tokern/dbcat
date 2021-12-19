@@ -5,7 +5,17 @@ from typing import List, Optional
 import typer
 
 import dbcat.settings
-from dbcat.api import init_db, open_catalog, scan_sources
+from dbcat.api import (
+    add_athena_source,
+    add_mysql_source,
+    add_postgresql_source,
+    add_redshift_source,
+    add_snowflake_source,
+    add_sqlite_source,
+    init_db,
+    open_catalog,
+    scan_sources,
+)
 from dbcat.generators import NoMatchesError
 
 schema_help_text = """
@@ -105,10 +115,8 @@ def add_sqlite(
         database=dbcat.settings.CATALOG_DB,
     )
     with closing(catalog):
-        init_db(catalog)
-
         with catalog.managed_session:
-            catalog.add_source(name=name, source_type="sqlite", path=path)
+            add_sqlite_source(catalog=catalog, name=name, path=path)
         typer.echo("Registered SQLite database {}".format(name))
 
 
@@ -132,12 +140,10 @@ def add_postgresql(
         database=dbcat.settings.CATALOG_DB,
     )
     with closing(catalog):
-        init_db(catalog)
-
         with catalog.managed_session:
-            catalog.add_source(
+            add_postgresql_source(
+                catalog=catalog,
                 name=name,
-                source_type="postgresql",
                 username=username,
                 password=password,
                 database=database,
@@ -167,19 +173,17 @@ def add_mysql(
         database=dbcat.settings.CATALOG_DB,
     )
     with closing(catalog):
-        init_db(catalog)
-
         with catalog.managed_session:
-            catalog.add_source(
+            add_mysql_source(
+                catalog=catalog,
                 name=name,
-                source_type="mysql",
                 username=username,
                 password=password,
                 database=database,
                 uri=uri,
                 port=port,
             )
-        typer.echo("Registered mysql database {}".format(name))
+        typer.echo("Registered MySQL database {}".format(name))
 
 
 @app.command()
@@ -202,12 +206,10 @@ def add_redshift(
         database=dbcat.settings.CATALOG_DB,
     )
     with closing(catalog):
-        init_db(catalog)
-
         with catalog.managed_session:
-            catalog.add_source(
+            add_redshift_source(
+                catalog=catalog,
                 name=name,
-                source_type="redshift",
                 username=username,
                 password=password,
                 database=database,
@@ -238,12 +240,10 @@ def add_snowflake(
         database=dbcat.settings.CATALOG_DB,
     )
     with closing(catalog):
-        init_db(catalog)
-
         with catalog.managed_session:
-            catalog.add_source(
+            add_snowflake_source(
+                catalog=catalog,
                 name=name,
-                source_type="snowflake",
                 username=username,
                 password=password,
                 database=database,
@@ -273,12 +273,10 @@ def add_athena(
         database=dbcat.settings.CATALOG_DB,
     )
     with closing(catalog):
-        init_db(catalog)
-
         with catalog.managed_session:
-            catalog.add_source(
+            add_athena_source(
+                catalog=catalog,
                 name=name,
-                source_type="snowflake",
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
                 region_name=region_name,

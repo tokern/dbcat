@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 from pathlib import Path
 from typing import List, Optional
 
@@ -14,6 +15,21 @@ from dbcat.generators import NoMatchesError
 from dbcat.migrations import get_alembic_config
 
 LOGGER = logging.getLogger(__name__)
+
+
+class OutputFormat(str, Enum):
+    tabular = "tabular"
+    json = "json"
+
+
+def init_db(catalog_obj: Catalog) -> None:
+    """
+    Initialize database
+    """
+
+    config = get_alembic_config(catalog_obj.engine)
+    command.upgrade(config, "heads")
+    LOGGER.info("Initialized the database")
 
 
 def catalog_connection(
@@ -63,7 +79,7 @@ def open_catalog(
     database: str = None,
 ) -> Catalog:
     try:
-        return catalog_connection(
+        catalog = catalog_connection(
             secret=secret,
             path=path,
             host=host,
@@ -78,23 +94,16 @@ def open_catalog(
         if config_file.exists():
             with config_file.open() as f:
                 LOGGER.debug("Open Catalog from config file %s", config_file)
-                return catalog_connection_yaml(f.read())
+                catalog = catalog_connection_yaml(f.read())
         else:
             LOGGER.debug("Open default Sqlite Catalog in %s/catalog.db", app_dir)
-            return catalog_connection(
+            catalog = catalog_connection(
                 path=app_dir / "catalog.db",
                 secret=dbcat.settings.DEFAULT_CATALOG_SECRET,
             )
 
-
-def init_db(catalog_obj: Catalog) -> None:
-    """
-    Initialize database
-    """
-
-    config = get_alembic_config(catalog_obj.engine)
-    command.upgrade(config, "heads")
-    LOGGER.info("Initialized the database")
+    init_db(catalog_obj=catalog)
+    return catalog
 
 
 def scan_sources(
@@ -131,3 +140,115 @@ def scan_sources(
                 scanner.scan()
             except StopIteration:
                 raise NoMatchesError
+
+
+def add_sqlite_source(
+    catalog: Catalog, name: str, path: Path,
+):
+    with catalog.managed_session:
+        catalog.add_source(name=name, uri=str(path), source_type="sqlite")
+
+
+def add_postgresql_source(
+    catalog: Catalog,
+    name: str,
+    username: str,
+    password: str,
+    database: str,
+    uri: str,
+    port: Optional[int] = None,
+) -> CatSource:
+    with catalog.commit_context:
+        return catalog.add_source(
+            name=name,
+            username=username,
+            password=password,
+            database=database,
+            uri=uri,
+            port=port,
+            source_type="postgresql",
+        )
+
+
+def add_mysql_source(
+    catalog: Catalog,
+    name: str,
+    username: str,
+    password: str,
+    database: str,
+    uri: str,
+    port: Optional[int] = None,
+) -> CatSource:
+    with catalog.commit_context:
+        return catalog.add_source(
+            name=name,
+            username=username,
+            password=password,
+            database=database,
+            uri=uri,
+            port=port,
+            source_type="mysql",
+        )
+
+
+def add_redshift_source(
+    catalog: Catalog,
+    name: str,
+    username: str,
+    password: str,
+    database: str,
+    uri: str,
+    port: Optional[int] = None,
+) -> CatSource:
+    with catalog.commit_context:
+        return catalog.add_source(
+            name=name,
+            username=username,
+            password=password,
+            database=database,
+            uri=uri,
+            port=port,
+            source_type="redshift",
+        )
+
+
+def add_snowflake_source(
+    catalog: Catalog,
+    name: str,
+    account: str,
+    username: str,
+    password: str,
+    database: str,
+    warehouse: str,
+    role: str,
+) -> CatSource:
+    with catalog.commit_context:
+        return catalog.add_source(
+            name=name,
+            username=username,
+            password=password,
+            database=database,
+            account=account,
+            warehouse=warehouse,
+            role=role,
+            source_type="snowflake",
+        )
+
+
+def add_athena_source(
+    catalog: Catalog,
+    name: str,
+    region_name: str,
+    s3_staging_dir: str,
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[str] = None,
+) -> CatSource:
+    with catalog.commit_context:
+        return catalog.add_source(
+            name=name,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=region_name,
+            s3_staging_dir=s3_staging_dir,
+            source_type="athena",
+        )

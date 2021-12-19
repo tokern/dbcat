@@ -827,5 +827,6 @@ def test_catalog_config_file(mocker, tmpdir):
     with config_file.open("w") as f:
         f.write("test_catalog_config")
     mocker.patch("dbcat.api.catalog_connection_yaml")
+    mocker.patch("dbcat.api.init_db")
     open_catalog(app_dir=tmpdir, secret=settings.DEFAULT_CATALOG_SECRET)
     dbcat.api.catalog_connection_yaml.assert_called_once_with("test_catalog_config")
