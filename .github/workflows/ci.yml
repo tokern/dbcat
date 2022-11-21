@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10']
+        python-version: ['3.10']
     name: Python ${{ matrix.python-version }}
     # Service containers to run with `container-job`
     services:
@@ -51,7 +51,7 @@ jobs:
     - name: Install Python Poetry
       uses: abatilo/actions-poetry@v2
       with:
-        poetry-version: 1.1.15
+        poetry-version: 1.2.2
     - name: View poetry version
       run: poetry --version
     - name: Install dependencies
