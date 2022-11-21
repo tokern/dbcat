@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dbcat"
-version = "0.12.0"
+version = "0.13.0"
 description = "Tokern Data Catalog"
 authors = ["Tokern <info@tokern.io>"]
 license = "MIT"
@@ -45,6 +45,7 @@ great-expectations = {version = "^0.13.42", optional = true}
 pydantic = "^1.8.2"
 greenlet = "^2.0.1"
 sqlalchemy-utils = "^0.38.3"
+numpy = "^1.21.0"
 
 [tool.poetry.extras]
 datahub = ["acryl-datahub", "great-expectations"]
