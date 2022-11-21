@@ -43,8 +43,8 @@ dataclasses = {version = ">=0.6", markers="python_version >= '3.6' and python_ve
 acryl-datahub = {version = "^0.8.16", optional = true}
 great-expectations = {version = "^0.13.42", optional = true}
 pydantic = "^1.8.2"
-SQLAlchemy-Utils = "^0.37.9"
 greenlet = "^2.0.1"
+sqlalchemy-utils = "^0.38.3"
 
 [tool.poetry.extras]
 datahub = ["acryl-datahub", "great-expectations"]
