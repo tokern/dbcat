@@ -41,8 +41,6 @@ jobs:
         env:
           MYSQL_USER: piiuser
           MYSQL_PASSWORD: p11secret
-          CREATE USER 'piiuser'@'localhost' IDENTIFIED BY 'p11secret';
-
           MYSQL_DATABASE: piidb
           MYSQL_ROOT_PASSWORD: r00tpassw0rd
         options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
