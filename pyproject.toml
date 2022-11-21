@@ -9,9 +9,9 @@ classifiers = [
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Database",
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries :: Python Modules",
@@ -23,7 +23,7 @@ repository="https://github.com/tokern/dbcat/"
 
 
 [tool.poetry.dependencies]
-python = ">=3.7,<=3.10.8"
+python = ">=3.8,<=3.10.8"
 click = "*"
 PyYAML = "*"
 amundsen-databuilder = {extras = ["athena", "bigquery", "glue", "rds", "snowflake"], version = "^7"}
@@ -45,7 +45,6 @@ great-expectations = {version = "^0.13.42", optional = true}
 pydantic = "^1.8.2"
 greenlet = "^2.0.1"
 sqlalchemy-utils = "^0.38.3"
-numpy = "^1.21.0"
 
 [tool.poetry.extras]
 datahub = ["acryl-datahub", "great-expectations"]
