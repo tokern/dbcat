@@ -23,7 +23,7 @@ repository="https://github.com/tokern/dbcat/"
 
 
 [tool.poetry.dependencies]
-python = ">=3.8,<=3.10.8"
+python = ">=3.8,<=3.10"
 click = "*"
 PyYAML = "*"
 amundsen-databuilder = {extras = ["athena", "bigquery", "glue", "rds", "snowflake"], version = "^7"}
