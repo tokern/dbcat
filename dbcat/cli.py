@@ -13,6 +13,7 @@ from dbcat.api import (
     add_redshift_source,
     add_snowflake_source,
     add_sqlite_source,
+    add_bigquery_source,
     init_db,
     open_catalog,
     scan_sources,
@@ -307,3 +308,37 @@ def add_athena(
                 typer.echo("Catalog with {} name already exist".format(name))
                 return
     typer.echo("Registered AWS Athena {}".format(name))
+
+def add_bigquery(
+    name: str = typer.Option(..., help="A memorable name for the database"),
+    username: str = typer.Option(..., help="Email to connect to database"),
+    project_id: str = typer.Option(..., help="Project id to connect to database"),
+    key_path: str = typer.Option(..., help="File Path to BigQuery Private Info (json)"),
+):
+    catalog = open_catalog(
+        app_dir=dbcat.settings.APP_DIR,
+        secret=dbcat.settings.CATALOG_SECRET,
+        path=dbcat.settings.CATALOG_PATH,
+        host=dbcat.settings.CATALOG_HOST,
+        port=dbcat.settings.CATALOG_PORT,
+        user=dbcat.settings.CATALOG_USER,
+        password=dbcat.settings.CATALOG_PASSWORD,
+        database=dbcat.settings.CATALOG_DB,
+    )
+    with closing(catalog):
+        with catalog.managed_session:
+            try:
+                add_bigquery_source(
+                    catalog=catalog,
+                    name = name,
+                    username = username,
+                    project_id = project_id,
+                    key_path = key_path,
+                    cred_key = key_path,
+
+                )
+            except sqlalchemy.exc.IntegrityError:
+                typer.echo("Catalog with {} name already exist".format(name))
+                return
+    typer.echo("Registered Big Query Database {}".format(name))
+
