@@ -309,6 +309,7 @@ def add_athena(
                 return
     typer.echo("Registered AWS Athena {}".format(name))
 
+@app.command()
 def add_bigquery(
     name: str = typer.Option(..., help="A memorable name for the database"),
     username: str = typer.Option(..., help="Email to connect to database"),
