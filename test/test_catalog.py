@@ -471,7 +471,7 @@ def test_add_sources(open_catalog_connection):
         bq_conn = connections[3]
         assert bq_conn.name == "bq"
         assert bq_conn.source_type == "bigquery"
-        assert bq_conn.username == "db_users"
+        assert bq_conn.username == "db_user"
         assert bq_conn.key_path == "db_key_path"
         assert bq_conn.cred_key == "db_key_path"
         assert bq_conn.project_id == "db_project_id"
