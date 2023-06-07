@@ -259,7 +259,6 @@ def add_bigquery_source(
     username:str,
     project_id: str,
     key_path: str,
-    cred_key:str,
 ) -> CatSource:
     with catalog.commit_context:
             return catalog.add_source(
@@ -267,6 +266,5 @@ def add_bigquery_source(
                 username=username,
                 project_id = project_id,
                 key_path=key_path,
-                cred_key=key_path,
                 source_type="bigquery",
             )

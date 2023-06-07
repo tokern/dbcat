@@ -17,7 +17,6 @@ connections:
     source_type: bigquery
     username: db_user
     key_path: db_key_path
-    cred_key:  db_key_path
     project_id: db_project_id
   - name: gl
     source_type: glue
