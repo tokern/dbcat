@@ -32,6 +32,23 @@ def test_snowflake_extractor(open_catalog_connection):
         == "sf_db_name"
     )
 
+def test_bigquery_extractor(open_catalog_connection):
+    catalog, conf = open_catalog_connection
+    with catalog.managed_session:
+        source = catalog.add_source(
+            name="bq1_source",
+            source_type="bigquery",
+            username="bq_username",
+            key_path="bq_keypath",
+            cred_key="bq_keypath",
+            project_id="bq_project_id"
+        )
+        extractor, conn_conf = DbScanner._create_big_query_extractor(source)
+    assert (
+        conn_conf.get("{}.key_path".format(extractor.get_scope())) == "bq_keypath"
+    )
+    
+
 
 def test_athena_extractor(open_catalog_connection):
     catalog, conf = open_catalog_connection
