@@ -252,3 +252,19 @@ def add_athena_source(
             s3_staging_dir=s3_staging_dir,
             source_type="athena",
         )
+
+def add_bigquery_source(
+    catalog: Catalog,
+    name: str,
+    username:str,
+    project_id: str,
+    key_path: str,
+) -> CatSource:
+    with catalog.commit_context:
+            return catalog.add_source(
+                name=name,
+                username=username,
+                project_id = project_id,
+                key_path=key_path,
+                source_type="bigquery",
+            )

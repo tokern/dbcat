@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dbcat"
-version = "0.13.1"
+version = "0.14.0"
 description = "Tokern Data Catalog"
 authors = ["Tokern <info@tokern.io>"]
 license = "MIT"
@@ -16,7 +16,7 @@ classifiers = [
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-keywords=["data-catalog","postgres","snowflake","redshift","glue"]
+keywords=["data-catalog","postgres","snowflake","redshift","glue", "bigquery"]
 readme="README.md"
 homepage="https://tokern.io/"
 repository="https://github.com/tokern/dbcat/"
