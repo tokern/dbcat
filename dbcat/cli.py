@@ -71,6 +71,9 @@ def scan(
         exclude_table: Optional[List[str]] = typer.Option(
             None, help=exclude_table_help_text
         ),
+        database:  Optional[List[str]] = typer.Option(
+            None, help=exclude_table_help_text
+        ),
 ):
     catalog = open_catalog(
         app_dir=dbcat.settings.APP_DIR,
@@ -92,6 +95,7 @@ def scan(
                 exclude_schema_regex=exclude_schema,
                 include_table_regex=include_table,
                 exclude_table_regex=exclude_table,
+                database=database,
             )
         except NoMatchesError:
             typer.echo(

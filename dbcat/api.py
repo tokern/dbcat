@@ -113,6 +113,7 @@ def scan_sources(
     exclude_schema_regex: Optional[List[str]] = None,
     include_table_regex: Optional[List[str]] = None,
     exclude_table_regex: Optional[List[str]] = None,
+    database: Optional[List[str]] = None,
 ):
     with catalog.managed_session:
         if source_names is not None and len(source_names) > 0:
@@ -134,6 +135,7 @@ def scan_sources(
                 exclude_schema_regex_str=exclude_schema_regex,
                 include_table_regex_str=include_table_regex,
                 exclude_table_regex_str=exclude_table_regex,
+                database=database,
             )
             LOGGER.info("Scanning {}".format(scanner.name))
             try:

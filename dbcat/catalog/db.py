@@ -1,7 +1,7 @@
 import logging
 import re
 from contextlib import closing
-from typing import Any, Generator, List, Optional, Pattern, Tuple, Type
+from typing import Any, Generator, List, Optional, Pattern, Tuple, Type, Union
 
 from databuilder import Scoped
 from databuilder.extractor.athena_metadata_extractor import AthenaMetadataExtractor
@@ -24,6 +24,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from dbcat.catalog.catalog import Catalog
 from dbcat.catalog.models import CatSource
 from dbcat.catalog.sqlite_extractor import SqliteMetadataExtractor
+from dbcat.catalog.mysql_beta_extractor import MysqlbetaMetadataExtractor
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,12 +38,14 @@ class DbScanner:
         exclude_schema_regex_str: Optional[List[str]] = None,
         include_table_regex_str: Optional[List[str]] = None,
         exclude_table_regex_str: Optional[List[str]] = None,
+        include_database: Optional[List[str]] = None,
     ):
         self._name = source.name
         self._extractor: Extractor
         self._conf: ConfigTree
         self._catalog = catalog
         self._source = source
+        self._database = include_database
         if source.source_type == "bigquery":
             self._extractor, self._conf = DbScanner._create_big_query_extractor(source)
         elif source.source_type == "mysql":
@@ -240,23 +243,30 @@ class DbScanner:
 
     @staticmethod
     def _create_mysql_extractor(
+        self,
         source: CatSource,
-    ) -> Tuple[MysqlMetadataExtractor, Any]:
-        where_clause_suffix = """
-        WHERE
-            c.table_schema NOT IN ('information_schema', 'performance_schema', 'sys', 'mysql')
-        """
+    ) -> Tuple[Union[MysqlMetadataExtractor, MysqlbetaMetadataExtractor], Any]:
+        if self._database is None:
+            where_clause_suffix = """
+            WHERE
+                c.table_schema NOT IN ('information_schema', 'performance_schema', 'sys', 'mysql')
+            """
+            extractor = MysqlMetadataExtractor()
+            extract_info = MysqlMetadataExtractor
+        else:
+            extractor = MysqlbetaMetadataExtractor()
+            extract_info = MysqlbetaMetadataExtractor
 
-        extractor = MysqlMetadataExtractor()
+        # extractor = MysqlMetadataExtractor()
         scope = extractor.get_scope()
         conn_string_key = f"{scope}.{SQLAlchemyExtractor().get_scope()}.{SQLAlchemyExtractor.CONN_STRING}"
 
         conf = ConfigFactory.from_dict(
             {
                 conn_string_key: source.conn_string,
-                f"{scope}.{MysqlMetadataExtractor.CLUSTER_KEY}": source.cluster,
-                f"{scope}.{MysqlMetadataExtractor.DATABASE_KEY}": source.database,
-                f"{scope}.{MysqlMetadataExtractor.WHERE_CLAUSE_SUFFIX_KEY}": where_clause_suffix,
+                f"{scope}.{extract_info.CLUSTER_KEY}": source.cluster,
+                f"{scope}.{extract_info.DATABASE_KEY}": source.database,
+                f"{scope}.{extract_info.WHERE_CLAUSE_SUFFIX_KEY}": where_clause_suffix,
             }
         )
 
