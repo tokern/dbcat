@@ -38,18 +38,18 @@ class DbScanner:
         exclude_schema_regex_str: Optional[List[str]] = None,
         include_table_regex_str: Optional[List[str]] = None,
         exclude_table_regex_str: Optional[List[str]] = None,
-        include_database: Optional[List[str]] = None,
+        specific_schema: Optional[str] = None,
     ):
         self._name = source.name
         self._extractor: Extractor
         self._conf: ConfigTree
         self._catalog = catalog
         self._source = source
-        self._database = include_database
+        self._specific_schema = specific_schema
         if source.source_type == "bigquery":
             self._extractor, self._conf = DbScanner._create_big_query_extractor(source)
         elif source.source_type == "mysql":
-            self._extractor, self._conf = DbScanner._create_mysql_extractor(source)
+            self._extractor, self._conf = DbScanner._create_mysql_extractor(self, source)
         elif source.source_type == "postgresql":
             self._extractor, self._conf = DbScanner._create_postgres_extractor(source)
         elif source.source_type == "redshift":
@@ -246,7 +246,8 @@ class DbScanner:
         self,
         source: CatSource,
     ) -> Tuple[Union[MysqlMetadataExtractor, MysqlbetaMetadataExtractor], Any]:
-        if self._database is None:
+        if len(self._specific_schema) == 0:
+            print('normal metadata extract')
             where_clause_suffix = """
             WHERE
                 c.table_schema NOT IN ('information_schema', 'performance_schema', 'sys', 'mysql')
@@ -254,6 +255,8 @@ class DbScanner:
             extractor = MysqlMetadataExtractor()
             extract_info = MysqlMetadataExtractor
         else:
+            target_schema = "'" + self._specific_schema.pop() + "'"
+            where_clause_suffix = 'where c.TABLE_SCHEMA = ' + target_schema
             extractor = MysqlbetaMetadataExtractor()
             extract_info = MysqlbetaMetadataExtractor
 

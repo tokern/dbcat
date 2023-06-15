@@ -41,8 +41,7 @@ class MysqlbetaMetadataExtractor(Extractor):
             left outer JOIN INFORMATION_SCHEMA.COLUMNS AS c
                 on c.TABLE_SCHEMA = t.TABLE_SCHEMA
                 and c.TABLE_NAME = t.TABLE_NAME
-            {where_clause_suffix}
-            ORDER BY ccluster, "schema", name, col_sort_order  ;
+            {where_clause_suffix} ;
     """
 
     # CONFIG KEYS
