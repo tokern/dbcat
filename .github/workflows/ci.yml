@@ -39,8 +39,8 @@ jobs:
         ports:
           - 3306:3306
         env:
-          MYSQL_USER: piiuser
-          MYSQL_PASSWORD: p11secret
+          MYSQL_USER: p11user
+          MYSQL_PASSWORD: p11pasword
           MYSQL_DATABASE: piidb
           MYSQL_ROOT_PASSWORD: r00tpassw0rd
         options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
