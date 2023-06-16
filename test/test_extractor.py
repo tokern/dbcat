@@ -40,7 +40,6 @@ def test_bigquery_extractor(open_catalog_connection):
             source_type="bigquery",
             username="bq_username",
             key_path="bq_keypath",
-            cred_key="bq_keypath",
             project_id="bq_project_id"
         )
         extractor, conn_conf = DbScanner._create_big_query_extractor(source)
@@ -128,3 +127,25 @@ def test_sqlite_extractor(load_all_data):
         assert len(partial_pii_table.columns) == 2
         assert partial_pii_table.columns[0].name == "a"
         assert partial_pii_table.columns[1].name == "b"
+
+
+def test_mysql_extractor(open_catalog_connection):
+    catalog, conf = open_catalog_connection
+    with catalog.managed_session:
+        source = catalog.add_source(
+            name="mysql1_source",
+            source_type="mysql",
+            username="mysql_username",
+            password="mysql_password",
+            database="mysql_db_name",
+            uri="mysql_uri",
+            port="mysql_port"
+        )
+        extractor, conn_conf = DbScanner._create_mysql_extractor(source)
+    assert (
+        conn_conf.get("{}.database_key".format(extractor.get_scope())) == "mysql_db_name"
+    )
+    assert(
+        conn_conf.get("{}.where_clause_suffix_key".format(extractor.get_scope())) == """WHERE
+                c.table_schema NOT IN ('information_schema', 'performance_schema', 'sys', 'mysql')"""
+    )

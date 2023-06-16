@@ -91,7 +91,7 @@ class DbScanner:
     @property
     def name(self):
         return self._name
-
+    
     @staticmethod
     def _test_regex(
         name: str,
@@ -247,7 +247,6 @@ class DbScanner:
         source: CatSource,
     ) -> Tuple[Union[MysqlMetadataExtractor, MysqlbetaMetadataExtractor], Any]:
         if len(self._specific_schema) == 0:
-            print('normal metadata extract')
             where_clause_suffix = """
             WHERE
                 c.table_schema NOT IN ('information_schema', 'performance_schema', 'sys', 'mysql')

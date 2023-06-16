@@ -55,7 +55,7 @@ match at least one --include switch but no --exclude switches. If --exclude appe
 --include, then tables matching --exclude are excluded from what is otherwise a normal scan.
 """
 specific_schema_text = """
-Scan a specific schema for mysql databases. 
+Scan a specific schema for mysql databases only. 
 """
 
 app = typer.Typer()
