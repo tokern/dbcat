@@ -335,7 +335,6 @@ def add_bigquery(
                     username = username,
                     project_id = project_id,
                     key_path = key_path,
-                    cred_key = key_path,
 
                 )
             except sqlalchemy.exc.IntegrityError:

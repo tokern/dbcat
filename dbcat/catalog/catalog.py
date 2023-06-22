@@ -463,6 +463,7 @@ class Catalog(ABC):
         )
         self._current_session.execute(stmt)
         self._current_session.flush()
+        self._current_session.refresh(column)
         logger.debug(
             "Set PII Type for column: %s, session: %s",
             column.name,
