@@ -282,6 +282,8 @@ def add_athena(
         aws_secret_access_key: str = typer.Option(..., help="AWS Secret Key"),
         region_name: str = typer.Option(..., help="AWS Region Name"),
         s3_staging_dir: str = typer.Option(..., help="S3 Staging Dir"),
+        mfa: str = typer.Option(None, help="MFA"),
+        aws_session_token: str = typer.Option(None, help="AWS Session Token")
 ):
     catalog = open_catalog(
         app_dir=dbcat.settings.APP_DIR,
@@ -303,6 +305,8 @@ def add_athena(
                     aws_secret_access_key=aws_secret_access_key,
                     region_name=region_name,
                     s3_staging_dir=s3_staging_dir,
+                    mfa=mfa,
+                    aws_session_token=aws_session_token,
                 )
             except sqlalchemy.exc.IntegrityError:
                 typer.echo("Catalog with {} name already exist".format(name))

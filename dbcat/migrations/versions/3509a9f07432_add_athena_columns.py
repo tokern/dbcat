@@ -20,6 +20,8 @@ def upgrade():
     op.add_column("sources", sa.Column("aws_secret_access_key", sa.String))
     op.add_column("sources", sa.Column("region_name", sa.String))
     op.add_column("sources", sa.Column("s3_staging_dir", sa.String))
+    op.add_column("sources", sa.Column("mfa", sa.String))
+    op.add_column("sources", sa.Column("aws_session_token", sa.String))
 
 
 def downgrade():
@@ -27,3 +29,5 @@ def downgrade():
     op.drop_column("sources", "aws_secret_access_key")
     op.drop_column("sources", "region_name")
     op.drop_column("sources", "s3_staging_dir")
+    op.add_column("sources", sa.Column("mfa", sa.String))
+    op.add_column("sources", sa.Column("aws_session_token", sa.String))
