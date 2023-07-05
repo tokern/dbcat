@@ -242,6 +242,8 @@ def add_athena_source(
     s3_staging_dir: str,
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
+    mfa: Optional[str] = None,
+    aws_session_token: Optional[str] = None,
 ) -> CatSource:
     with catalog.commit_context:
         return catalog.add_source(
@@ -250,6 +252,8 @@ def add_athena_source(
             aws_secret_access_key=aws_secret_access_key,
             region_name=region_name,
             s3_staging_dir=s3_staging_dir,
+            mfa = mfa,
+            aws_session_token=aws_session_token,
             source_type="athena",
         )
 

@@ -71,6 +71,8 @@ class CatSource(BaseModel):
     )
     region_name = Column(String)
     s3_staging_dir = Column(String)
+    mfa = Column(String)
+    aws_session_token = Column(String)
 
     schemata = relationship("CatSchema", back_populates="source")
     jobs = relationship("Job", back_populates="source")
@@ -104,6 +106,8 @@ class CatSource(BaseModel):
         aws_secret_access_key: Optional[str] = None,
         region_name: Optional[str] = None,
         s3_staging_dir: Optional[str] = None,
+        mfa: Optional[str] = None,
+        aws_session_token: Optional[str] = None,
         **kwargs,
     ):
         self.uri = uri
@@ -128,6 +132,8 @@ class CatSource(BaseModel):
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
         self.region_name = region_name
+        self.mfa = mfa
+        self.aws_session_token = aws_session_token
         self.s3_staging_dir = s3_staging_dir
 
     @property
@@ -149,7 +155,9 @@ class CatSource(BaseModel):
         elif self.source_type == "athena":
             conn_string = (
                 "awsathena+rest://{aws_access_key_id}:{aws_secret_access_key}@athena.{region_name}.amazonaws.com:443/"
-                "?s3_staging_dir={s3_staging_dir}".format(
+                "?s3_staging_dir={s3_staging_dir}"
+                "&aws_session_token={aws_session_token}"
+                "&mfa_serial={mfa}".format(
                     aws_access_key_id=quote_plus(self.aws_access_key_id)
                     if self.aws_access_key_id is not None
                     else "",
@@ -158,6 +166,12 @@ class CatSource(BaseModel):
                     else "",
                     region_name=self.region_name,
                     s3_staging_dir=quote_plus(self.s3_staging_dir),
+                    aws_session_token=quote_plus(self.aws_session_token)
+                    if self.aws_session_token is not None
+                    else "",
+                    mfa=quote_plus(self.mfa)
+                    if self.mfa is not None
+                    else "",
                 )
             )
         else:
