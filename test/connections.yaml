@@ -34,3 +34,10 @@ connections:
     aws_secret_access_key: dummy_secret
     region_name: us-east-1
     s3_staging_dir: s3://dummy
+  - name: oracle
+    source_type: oracle
+    database: db_database
+    username: db_user
+    password: db_password
+    port: db_port
+    uri: db_uri
