@@ -445,10 +445,10 @@ def test_add_sources(open_catalog_connection):
             catalog.add_source(**c)
 
         connections = catalog.search_sources(source_like="%")
-        assert len(connections) == 7
+        assert len(connections) == 8
 
         # pg
-        pg_connection = connections[0]
+        pg_connection = connections[1]
         assert pg_connection.name == "pg"
         assert pg_connection.source_type == "postgres"
         assert pg_connection.database == "db_database"
@@ -458,7 +458,7 @@ def test_add_sources(open_catalog_connection):
         assert pg_connection.uri == "db_uri"
 
         # mysql
-        mysql_conn = connections[1]
+        mysql_conn = connections[2]
         assert mysql_conn.name == "mys"
         assert mysql_conn.source_type == "mysql"
         assert mysql_conn.database == "db_database"
@@ -468,7 +468,7 @@ def test_add_sources(open_catalog_connection):
         assert mysql_conn.uri == "db_uri"
 
         # bigquery
-        bq_conn = connections[2]
+        bq_conn = connections[3]
         assert bq_conn
         assert bq_conn.name == "bq"
         assert bq_conn.source_type == "bigquery"
@@ -477,12 +477,12 @@ def test_add_sources(open_catalog_connection):
         assert bq_conn.project_id == "db_project_id"
 
         # glue
-        glue_conn = connections[3]
+        glue_conn = connections[4]
         assert glue_conn.name == "gl"
         assert glue_conn.source_type == "glue"
 
         # snowflake
-        sf_conn = connections[4]
+        sf_conn = connections[5]
         assert sf_conn.name == "sf"
         assert sf_conn.source_type == "snowflake"
         assert sf_conn.database == "db_database"
@@ -493,7 +493,7 @@ def test_add_sources(open_catalog_connection):
         assert sf_conn.warehouse == "db_warehouse"
 
         # athena
-        athena_conn = connections[5]
+        athena_conn = connections[6]
         assert athena_conn.name == "aws_athena"
         assert athena_conn.source_type == "athena"
         assert athena_conn.aws_access_key_id == "dummy_key"
@@ -503,7 +503,7 @@ def test_add_sources(open_catalog_connection):
 
 
         # oracle
-        oracle_conn = connections[6]
+        oracle_conn = connections[7]
         assert oracle_conn.name == "oracle"
         assert oracle_conn.source_type == "oracle"
         assert oracle_conn.database == "db_database"
