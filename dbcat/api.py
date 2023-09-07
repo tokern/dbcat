@@ -170,6 +170,26 @@ def add_postgresql_source(
         )
 
 
+def add_oracle_source(
+    catalog: Catalog,
+    name: str,
+    username: str,
+    password: str,
+    database: str,
+    uri: str,
+    port: Optional[int] = None,
+) -> CatSource:
+    with catalog.commit_context:
+        return catalog.add_source(
+            name=name,
+            username=username,
+            password=password,
+            database=database,
+            uri=uri,
+            port=port,
+            source_type="oracle",
+        )
+
 def add_mysql_source(
     catalog: Catalog,
     name: str,

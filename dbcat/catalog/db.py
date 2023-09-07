@@ -17,6 +17,7 @@ from databuilder.extractor.snowflake_metadata_extractor import (
     SnowflakeMetadataExtractor,
 )
 from databuilder.extractor.sql_alchemy_extractor import SQLAlchemyExtractor
+from databuilder.extractor.oracle_metadata_extractor import OracleMetadataExtractor
 from databuilder.models.table_metadata import TableMetadata
 from pyhocon import ConfigFactory, ConfigTree
 from sqlalchemy.orm.exc import NoResultFound
@@ -57,6 +58,8 @@ class DbScanner:
             self._extractor, self._conf = DbScanner._create_sqlite_extractor(source)
         elif source.source_type == "athena":
             self._extractor, self._conf = DbScanner._create_athena_extractor(source)
+        elif source.source_type == 'oracle':
+            self._extractor, self._conf = DbScanner._create_oracle_extractor(source)
         else:
             raise ValueError("{} is not supported".format(source.source_type))
 
@@ -261,6 +264,29 @@ class DbScanner:
         )
 
         return extractor, conf
+
+    @staticmethod
+    def _create_oracle_extractor(source: CatSource) -> Tuple[Extractor, Any]:
+        where_clause_suffix = """
+        WHERE c.owner NOT IN ('AUDSYS','CTXSYS','DBSFWUSER','APPQOSSYS','DBSNMP','DVSYS','GSMADMIN_INTERNAL','LBACSYS',
+        'ALL_SA_AUDIT_OPTIONS','MDSYS','OJVMSYS','OLAPSYS','ORDDATA','ORDSYS','OUTLN','SYS','SYSTEM',
+        'WMSYS','XDB')
+        """
+
+        extractor = OracleMetadataExtractor()
+        scope = extractor.get_scope()
+        conn_string_key = f"{scope}.{SQLAlchemyExtractor().get_scope()}.{SQLAlchemyExtractor.CONN_STRING}"
+        conf = ConfigFactory.from_dict(
+            {
+                conn_string_key: source.conn_string,
+                f"{scope}.{OracleMetadataExtractor.CLUSTER_KEY}": source.cluster,
+                f"{scope}.{OracleMetadataExtractor.DATABASE_KEY}": source.database,
+                f"{scope}.{OracleMetadataExtractor.WHERE_CLAUSE_SUFFIX_KEY}": where_clause_suffix,
+            }
+        )
+
+        return extractor, conf
+
 
     @staticmethod
     def _create_postgres_extractor(source: CatSource) -> Tuple[Extractor, Any]:
