@@ -54,6 +54,9 @@ When both switches are given, the behavior is to dump just the tables that
 match at least one --include switch but no --exclude switches. If --exclude appears without
 --include, then tables matching --exclude are excluded from what is otherwise a normal scan.
 """
+specific_schema_text = """
+Scan a specific schema for mysql databases only. 
+"""
 
 app = typer.Typer()
 
@@ -70,6 +73,9 @@ def scan(
         include_table: Optional[List[str]] = typer.Option(None, help=table_help_text),
         exclude_table: Optional[List[str]] = typer.Option(
             None, help=exclude_table_help_text
+        ),
+        specific_schema:  Optional[List[str]] = typer.Option(
+            None, help=specific_schema_text
         ),
 ):
     catalog = open_catalog(
@@ -92,6 +98,7 @@ def scan(
                 exclude_schema_regex=exclude_schema,
                 include_table_regex=include_table,
                 exclude_table_regex=exclude_table,
+                schema=specific_schema,
             )
         except NoMatchesError:
             typer.echo(
@@ -339,7 +346,6 @@ def add_bigquery(
                     username = username,
                     project_id = project_id,
                     key_path = key_path,
-
                 )
             except sqlalchemy.exc.IntegrityError:
                 typer.echo("Catalog with {} name already exist".format(name))
