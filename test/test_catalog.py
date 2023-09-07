@@ -448,7 +448,7 @@ def test_add_sources(open_catalog_connection):
         assert len(connections) == 7
 
         # pg
-        pg_connection = connections[1]
+        pg_connection = connections[0]
         assert pg_connection.name == "pg"
         assert pg_connection.source_type == "postgres"
         assert pg_connection.database == "db_database"
@@ -458,7 +458,7 @@ def test_add_sources(open_catalog_connection):
         assert pg_connection.uri == "db_uri"
 
         # mysql
-        mysql_conn = connections[2]
+        mysql_conn = connections[1]
         assert mysql_conn.name == "mys"
         assert mysql_conn.source_type == "mysql"
         assert mysql_conn.database == "db_database"
@@ -468,7 +468,7 @@ def test_add_sources(open_catalog_connection):
         assert mysql_conn.uri == "db_uri"
 
         # bigquery
-        bq_conn = connections[3]
+        bq_conn = connections[2]
         assert bq_conn
         assert bq_conn.name == "bq"
         assert bq_conn.source_type == "bigquery"
@@ -477,12 +477,12 @@ def test_add_sources(open_catalog_connection):
         assert bq_conn.project_id == "db_project_id"
 
         # glue
-        glue_conn = connections[4]
+        glue_conn = connections[3]
         assert glue_conn.name == "gl"
         assert glue_conn.source_type == "glue"
 
         # snowflake
-        sf_conn = connections[5]
+        sf_conn = connections[4]
         assert sf_conn.name == "sf"
         assert sf_conn.source_type == "snowflake"
         assert sf_conn.database == "db_database"
@@ -493,13 +493,24 @@ def test_add_sources(open_catalog_connection):
         assert sf_conn.warehouse == "db_warehouse"
 
         # athena
-        athena_conn = connections[6]
+        athena_conn = connections[5]
         assert athena_conn.name == "aws_athena"
         assert athena_conn.source_type == "athena"
         assert athena_conn.aws_access_key_id == "dummy_key"
         assert athena_conn.aws_secret_access_key == "dummy_secret"
         assert athena_conn.region_name == "us-east-1"
         assert athena_conn.s3_staging_dir == "s3://dummy"
+
+
+        # oracle
+        oracle_conn = connections[6]
+        assert oracle_conn.name == "oracle"
+        assert oracle_conn.source_type == "oracle"
+        assert oracle_conn.database == "db_database"
+        assert oracle_conn.username == "db_user"
+        assert oracle_conn.password == "db_password"
+        assert oracle_conn.port == "db_port"
+        assert oracle_conn.uri == "db_uri"
 
 
 @pytest.fixture(scope="module")
