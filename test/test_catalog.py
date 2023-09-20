@@ -445,7 +445,7 @@ def test_add_sources(open_catalog_connection):
             catalog.add_source(**c)
 
         connections = catalog.search_sources(source_like="%")
-        assert len(connections) == 7
+        assert len(connections) == 8
 
         # pg
         pg_connection = connections[1]
@@ -500,6 +500,16 @@ def test_add_sources(open_catalog_connection):
         assert athena_conn.aws_secret_access_key == "dummy_secret"
         assert athena_conn.region_name == "us-east-1"
         assert athena_conn.s3_staging_dir == "s3://dummy"
+
+        # oracle
+        oracle_conn = connections[7]
+        assert oracle_conn.name == "oracle"
+        assert oracle_conn.source_type == "oracle"
+        assert oracle_conn.database == "db_database"
+        assert oracle_conn.username == "db_user"
+        assert oracle_conn.password == "db_password"
+        assert oracle_conn.port == "db_port"
+        assert oracle_conn.uri == "db_uri"
 
 
 @pytest.fixture(scope="module")
