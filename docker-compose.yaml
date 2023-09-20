@@ -1,0 +1,23 @@
+# Use this docker-compose for pytest
+version: '3.7'
+
+services:
+  postgres:
+    # Docker Hub image
+    image: postgres:13
+    ports:
+      - 5432:5432
+    # Provide the password for postgres
+    environment:
+      POSTGRES_USER: piiuser
+      POSTGRES_PASSWORD: p11secret
+      POSTGRES_DB: piidb
+  mariadb:
+    image: mariadb:10.11.4
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_USER: piiuser
+      MYSQL_PASSWORD: p11secret
+      MYSQL_DATABASE: piidb
+      MYSQL_ROOT_PASSWORD: r00tpassw0rd

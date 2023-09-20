@@ -36,7 +36,7 @@ connections:
     s3_staging_dir: s3://dummy
   - name: oracle
     source_type: oracle
-    database: db_database
+    service_name: db_service_name
     username: db_user
     password: db_password
     port: db_port

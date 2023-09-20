@@ -142,8 +142,9 @@ def test_oracle_extractor(open_catalog_connection):
             uri="db_uri",
             username="db_user",
             password="db_password",
-            database="db_database",
+            service_name="db_service_name",
             port="db_port",
+            source_type="oracle",
         )
 
         extractor, conn_conf = DbScanner._create_oracle_extractor(source)
@@ -153,5 +154,5 @@ def test_oracle_extractor(open_catalog_connection):
         )
         assert (
             scoped.get_string(SQLAlchemyExtractor.CONN_STRING)
-            == f"oracle+cx_oracle://db_user:db_password@db_uri:db_port/db_database"
+            == f"oracle+cx_oracle://db_user:db_password@db_uri:db_port/db_service_name"
         )
