@@ -505,7 +505,7 @@ def test_add_sources(open_catalog_connection):
         oracle_conn = connections[7]
         assert oracle_conn.name == "oracle"
         assert oracle_conn.source_type == "oracle"
-        assert oracle_conn.database == "db_database"
+        assert oracle_conn.service_name == "db_service_name"
         assert oracle_conn.username == "db_user"
         assert oracle_conn.password == "db_password"
         assert oracle_conn.port == "db_port"

@@ -73,6 +73,7 @@ class CatSource(BaseModel):
     s3_staging_dir = Column(String)
     mfa = Column(String)
     aws_session_token = Column(String)
+    service_name = Column(String)
 
     schemata = relationship("CatSchema", back_populates="source")
     jobs = relationship("Job", back_populates="source")
@@ -108,6 +109,7 @@ class CatSource(BaseModel):
         s3_staging_dir: Optional[str] = None,
         mfa: Optional[str] = None,
         aws_session_token: Optional[str] = None,
+        service_name: Optional[str] = None,
         **kwargs,
     ):
         self.uri = uri
@@ -135,6 +137,7 @@ class CatSource(BaseModel):
         self.mfa = mfa
         self.aws_session_token = aws_session_token
         self.s3_staging_dir = s3_staging_dir
+        self.service_name = service_name
 
     @property
     def conn_string(self):
@@ -175,7 +178,7 @@ class CatSource(BaseModel):
                 )
             )
         elif self.source_type == "oracle":
-            conn_string = f"oracle+cx_oracle://{self.username}:{self.password}@{self.uri}:{self.port}/{self.database}"
+            conn_string = f"oracle+cx_oracle://{self.username}:{self.password}@{self.uri}:{self.port}/{self.service_name}"
         else:
             username_password_placeholder = (
                 f"{self.username}:{self.password}" if self.password is not None else ""
