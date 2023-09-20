@@ -174,6 +174,8 @@ class CatSource(BaseModel):
                     else "",
                 )
             )
+        elif self.source_type == "oracle":
+            conn_string = f"oracle+cx_oracle://{self.username}:{self.password}@{self.uri}:{self.port}/{self.database}"
         else:
             username_password_placeholder = (
                 f"{self.username}:{self.password}" if self.password is not None else ""

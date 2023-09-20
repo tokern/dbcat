@@ -16,6 +16,7 @@ from databuilder.extractor.redshift_metadata_extractor import RedshiftMetadataEx
 from databuilder.extractor.snowflake_metadata_extractor import (
     SnowflakeMetadataExtractor,
 )
+from databuilder.extractor.oracle_metadata_extractor import OracleMetadataExtractor
 from databuilder.extractor.sql_alchemy_extractor import SQLAlchemyExtractor
 from databuilder.models.table_metadata import TableMetadata
 from pyhocon import ConfigFactory, ConfigTree
@@ -57,6 +58,8 @@ class DbScanner:
             self._extractor, self._conf = DbScanner._create_sqlite_extractor(source)
         elif source.source_type == "athena":
             self._extractor, self._conf = DbScanner._create_athena_extractor(source)
+        elif source.source_type == "oracle":
+            self._extractor, self._conf = DbScanner._create_oracle_extractor(source)
         else:
             raise ValueError("{} is not supported".format(source.source_type))
 
@@ -333,3 +336,17 @@ class DbScanner:
         )
 
         return extractor, conf
+
+    @staticmethod
+    def _create_oracle_extractor(
+        source: CatSource,
+    ) -> Tuple[SqliteMetadataExtractor, Any]:
+        where_clause_suffix = """
+            WHERE c.OWNER NOT IN (
+             'GSMADMIN_INTERNAL', 'ORDSYS', 'DBSFWUSER', 'SYSAUX', 'OLAPSYS', 'ALL_SA_AUDIT_OPTIONS',
+             'ORDDATA', 'AUDSYS', 'DIP', 'DBSNMP', 'OUTLN', 'XDB', 'CTXSYS', 'SYSTEM', 'SYS', 'MDSYS',
+             'LBACSYS', 'ORDPLUGINS', 'OJVMSYS', 'APPQOSSYS', 'DVSYS', 'WMSYS')
+        """
+        return DbScanner._create_sqlalchemy_extractor(
+            source, where_clause_suffix, OracleMetadataExtractor
+        )

@@ -132,3 +132,26 @@ def test_sqlite_extractor(load_all_data):
         assert len(partial_pii_table.columns) == 2
         assert partial_pii_table.columns[0].name == "a"
         assert partial_pii_table.columns[1].name == "b"
+
+def test_oracle_extractor(open_catalog_connection):
+    catalog, conf = open_catalog_connection
+    with catalog.managed_session:
+        source = catalog.add_source(
+            catalog=catalog,
+            name="oracle_db",
+            uri="db_uri",
+            username="db_user",
+            password="db_password",
+            database="db_database",
+            port="db_port",
+        )
+
+        extractor, conn_conf = DbScanner._create_oracle_extractor(source)
+        scoped = Scoped.get_scoped_conf(
+            Scoped.get_scoped_conf(conn_conf, extractor.get_scope()),
+            SQLAlchemyExtractor().get_scope(),
+        )
+        assert (
+            scoped.get_string(SQLAlchemyExtractor.CONN_STRING)
+            == f"oracle+cx_oracle://db_user:db_password@db_uri:db_port/db_database"
+        )

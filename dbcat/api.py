@@ -272,3 +272,23 @@ def add_bigquery_source(
                 key_path=key_path,
                 source_type="bigquery",
             )
+
+def add_oracle_source(
+    catalog: Catalog,
+    name: str, 
+    username: str,
+    password: str,
+    service_name: str,
+    uri: str,
+    port: Optional[int] = None,
+) -> CatSource:
+    with catalog.commit_context:
+        return catalog.add_source(
+            name=name,
+            username=username,
+            password=password,
+            service_name=service_name,
+            uri=uri,
+            port=port,
+            source_type="oracle",
+        )
