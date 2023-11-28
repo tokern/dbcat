@@ -277,7 +277,7 @@ class DbScanner:
     @staticmethod
     def _create_redshift_extractor(source: CatSource) -> Tuple[Extractor, Any]:
         where_clause_suffix = """
-            WHERE SCHEMA NOT IN ('information_schema', 'pg_catalog')
+            SCHEMA NOT IN ('information_schema', 'pg_catalog')
         """
         return DbScanner._create_sqlalchemy_extractor(
             source, where_clause_suffix, RedshiftMetadataExtractor
