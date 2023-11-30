@@ -140,7 +140,7 @@ def scan_sources(
                 scanner.scan()
             except StopIteration:
                 raise NoMatchesError
-
+        return sources
 
 def add_sqlite_source(
     catalog: Catalog, name: str, path: Path,
