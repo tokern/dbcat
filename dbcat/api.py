@@ -51,7 +51,11 @@ def catalog_connection(
     ):
         LOGGER.info(f"Open PG Catalog at {host}")
         return PGCatalog(
-            host=host, port=port, user=user, password=password, database=database,
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            database=database,
         )
     elif path is not None:
         LOGGER.info(f"Open Sqlite Catalog at {path}")
@@ -143,7 +147,9 @@ def scan_sources(
 
 
 def add_sqlite_source(
-    catalog: Catalog, name: str, path: Path,
+    catalog: Catalog,
+    name: str,
+    path: Path,
 ):
     with catalog.managed_session:
         catalog.add_source(name=name, uri=str(path), source_type="sqlite")
@@ -252,30 +258,32 @@ def add_athena_source(
             aws_secret_access_key=aws_secret_access_key,
             region_name=region_name,
             s3_staging_dir=s3_staging_dir,
-            mfa = mfa,
+            mfa=mfa,
             aws_session_token=aws_session_token,
             source_type="athena",
         )
 
+
 def add_bigquery_source(
     catalog: Catalog,
     name: str,
-    username:str,
+    username: str,
     project_id: str,
     key_path: str,
 ) -> CatSource:
     with catalog.commit_context:
-            return catalog.add_source(
-                name=name,
-                username=username,
-                project_id = project_id,
-                key_path=key_path,
-                source_type="bigquery",
-            )
+        return catalog.add_source(
+            name=name,
+            username=username,
+            project_id=project_id,
+            key_path=key_path,
+            source_type="bigquery",
+        )
+
 
 def add_oracle_source(
     catalog: Catalog,
-    name: str, 
+    name: str,
     username: str,
     password: str,
     service_name: str,
@@ -291,4 +299,25 @@ def add_oracle_source(
             uri=uri,
             port=port,
             source_type="oracle",
+        )
+
+
+def add_sqlserver_source(
+    catalog: Catalog,
+    name: str,
+    username: str,
+    password: str,
+    database: str,
+    uri: str,
+    port: Optional[int] = None,
+) -> CatSource:
+    with catalog.commit_context:
+        return catalog.add_source(
+            name=name,
+            username=username,
+            password=password,
+            uri=uri,
+            port=port,
+            database=database,
+            source_type="sqlserver",
         )

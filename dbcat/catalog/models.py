@@ -172,13 +172,16 @@ class CatSource(BaseModel):
                     aws_session_token=quote_plus(self.aws_session_token)
                     if self.aws_session_token is not None
                     else "",
-                    mfa=quote_plus(self.mfa)
-                    if self.mfa is not None
-                    else "",
+                    mfa=quote_plus(self.mfa) if self.mfa is not None else "",
                 )
             )
         elif self.source_type == "oracle":
             conn_string = f"oracle+cx_oracle://{self.username}:{self.password}@{self.uri}:{self.port}/{self.service_name}"
+        elif self.source_type == "sqlserver":
+            conn_string = (
+                f"mssql+pyodbc://{self.username}:{self.password}@{self.uri}/{self.database}"
+                + (f":{self.port}" if self.port else "")
+            )
         else:
             username_password_placeholder = (
                 f"{self.username}:{self.password}" if self.password is not None else ""

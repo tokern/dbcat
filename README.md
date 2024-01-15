@@ -47,4 +47,5 @@ The following databases are supported:
 * BigQuery
 * Snowflake
 * AWS Athena
+* SQLServer
 
