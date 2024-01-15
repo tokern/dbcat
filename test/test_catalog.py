@@ -445,7 +445,7 @@ def test_add_sources(open_catalog_connection):
             catalog.add_source(**c)
 
         connections = catalog.search_sources(source_like="%")
-        assert len(connections) == 8
+        assert len(connections) == 9
 
         # pg
         pg_connection = connections[1]
@@ -510,6 +510,16 @@ def test_add_sources(open_catalog_connection):
         assert oracle_conn.password == "db_password"
         assert oracle_conn.port == "db_port"
         assert oracle_conn.uri == "db_uri"
+
+        # sqlserver
+        sqlserver_conn = connections[8]
+        assert sqlserver_conn.name == "sqlserver"
+        assert sqlserver_conn.source_type == "sqlserver"
+        assert sqlserver_conn.username == "db_user"
+        assert sqlserver_conn.password == "db_password"
+        assert sqlserver_conn.port == "db_port"
+        assert sqlserver_conn.uri == "db_uri"
+        assert sqlserver_conn.database == "db_database"
 
 
 @pytest.fixture(scope="module")

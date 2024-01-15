@@ -41,3 +41,10 @@ connections:
     password: db_password
     port: db_port
     uri: db_uri
+  - name: sqlserver
+    source_type: sqlserver
+    username: db_user
+    password: db_password
+    uri: db_uri
+    database: db_database
+    port: db_port
